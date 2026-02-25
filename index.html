@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>词记 · 单词记忆</title>
+<link id="pwa-manifest" rel="manifest">
+<meta name="theme-color" content="#4F46E5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="词记">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --cp:#4F46E5;--cpd:#3730A3;--cpl:#818CF8;--cpbg:#EEF2FF;
+  --cs:#10B981;--ce:#EF4444;--cw:#F59E0B;
+  --cbg:#F8FAFC;--csurf:#FFFFFF;--ct:#1E293B;--cm:#64748B;--cb:#E2E8F0;
+  --nh:60px;--hh:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  background:var(--cbg);color:var(--ct);
+}
+#app{height:100vh;position:relative;overflow:hidden}
+
+/* HOME */
+#s-home{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:32px;text-align:center;background:var(--cbg);
+}
+.home-logo{
+  width:90px;height:90px;background:var(--cp);border-radius:24px;
+  display:flex;align-items:center;justify-content:center;font-size:50px;
+  margin-bottom:20px;box-shadow:0 8px 28px rgba(79,70,229,.35);
+}
+.home-title{font-size:30px;font-weight:800;color:var(--cp);margin-bottom:8px}
+.home-sub{font-size:14px;color:var(--cm);line-height:1.7;margin-bottom:32px}
+.home-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
+.home-ver{margin-top:24px;font-size:12px;font-weight:600;color:var(--cp);letter-spacing:.5px}
+
+/* MAIN APP */
+#main{position:absolute;inset:0;display:none;flex-direction:column}
+#main.on{display:flex}
+
+/* HEADER */
+.hdr{
+  height:var(--hh);background:var(--csurf);border-bottom:1px solid var(--cb);
+  display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:5;
+}
+.hdr-title{flex:1;font-size:17px;font-weight:700;color:var(--cp)}
+
+/* INNER SCREENS */
+.is{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
+.is.on{display:flex}
+
+/* SCROLL CONTENT */
+.cnt{flex:1;overflow-y:auto;padding:14px;padding-bottom:80px;-webkit-overflow-scrolling:touch}
+
+/* BOTTOM NAV */
+#nav{
+  height:var(--nh);background:var(--csurf);border-top:1px solid var(--cb);
+  display:flex;align-items:stretch;flex-shrink:0;z-index:5;
+}
+.nb{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  border:none;background:none;cursor:pointer;color:var(--cm);font-size:11px;font-family:inherit;
+  transition:color .15s;padding:6px 0;
+}
+.nb.on{color:var(--cp)}
+.ni{font-size:22px;line-height:1}
+
+/* BUTTONS */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;
+  cursor:pointer;border:none;transition:all .15s;font-family:inherit;white-space:nowrap;
+}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-full{width:100%}
+.btn-sm{padding:7px 13px;font-size:13px;border-radius:8px}
+.btn-p{background:var(--cp);color:#fff}
+.btn-p:hover:not(:disabled){background:var(--cpd)}
+.btn-s{background:var(--cb);color:var(--ct)}
+.btn-s:hover:not(:disabled){background:#D1D5DB}
+.btn-o{background:transparent;border:1.5px solid var(--cp);color:var(--cp)}
+.btn-o:hover:not(:disabled){background:var(--cpbg)}
+.btn-d{background:var(--ce);color:#fff}
+.btn-g{background:transparent;border:1.5px solid var(--cb);color:var(--cm);font-family:inherit}
+
+/* CARD */
+.card{
+  background:var(--csurf);border-radius:12px;padding:15px;
+  box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px;
+}
+
+/* INPUT */
+.inp{
+  width:100%;padding:11px 13px;border:1.5px solid var(--cb);border-radius:9px;
+  font-size:14px;font-family:inherit;outline:none;background:var(--csurf);color:var(--ct);
+  transition:border-color .2s;
+}
+.inp:focus{border-color:var(--cp)}
+
+/* BADGE */
+.bdg{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b0{background:#FEE2E2;color:#B91C1C}
+.b1{background:#FEF3C7;color:#92400E}
+.b2{background:#D1FAE5;color:#065F46}
+
+/* FILTER CHIPS */
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.chip{
+  padding:6px 13px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;
+  border:1.5px solid var(--cb);background:var(--csurf);color:var(--cm);
+  transition:all .15s;font-family:inherit;
+}
+.chip.on{border-color:var(--cp);background:var(--cpbg);color:var(--cp)}
+
+/* WORD LIST */
+.wi{
+  display:flex;align-items:center;gap:11px;padding:12px 13px;
+  background:var(--csurf);border-radius:10px;margin-bottom:8px;
+  border:1.5px solid transparent;transition:all .15s;
+}
+.wi:hover{background:#F8FAFF}
+.wi.sel{border-color:var(--cp);background:var(--cpbg)}
+.wchk{
+  width:20px;height:20px;border:2px solid var(--cb);border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  color:transparent;transition:all .15s;cursor:pointer;
+}
+.wi.sel .wchk{background:var(--cp);border-color:var(--cp);color:#fff}
+.winfo{flex:1;min-width:0;cursor:pointer}
+.wname{font-weight:600;font-size:15px}
+.wzh{font-size:12px;color:var(--cm);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* BATCH TOOLBAR */
+#btoolbar{
+  position:absolute;bottom:8px;left:12px;right:12px;
+  background:var(--cp);color:#fff;border-radius:13px;
+  padding:12px 15px;display:none;align-items:center;justify-content:space-between;
+  z-index:10;box-shadow:0 4px 20px rgba(79,70,229,.4);
+}
+
+/* PDF DROP ZONE */
+.dzone{
+  border:2px dashed var(--cb);border-radius:12px;padding:38px 20px;
+  text-align:center;cursor:pointer;transition:all .2s;color:var(--cm);
+}
+.dzone:hover,.dzone.drag{border-color:var(--cp);background:var(--cpbg);color:var(--cp)}
+.dico{font-size:44px;margin-bottom:10px}
+
+/* PDF TEXT */
+#pdftxt{
+  background:var(--csurf);border-radius:10px;padding:14px 16px;
+  font-size:15px;line-height:1.85;max-height:62vh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  border:1.5px solid var(--cb);word-break:break-word;
+}
+#pdftxt p{margin:0 0 13px}
+#pdftxt p:last-child{margin-bottom:0}
+#pdftxt p.exam-q{margin-bottom:5px;font-weight:500}
+#pdftxt p.exam-opt{margin:0 0 4px 1.8em;text-indent:-1.8em}
+#pdftxt .pg-sep{display:flex;align-items:center;gap:8px;margin:16px 0;color:var(--cm);font-size:11px;user-select:none}
+#pdftxt .pg-sep::before,#pdftxt .pg-sep::after{content:'';flex:1;border-top:1px dashed var(--cb)}
+#pdftxt h2{font-size:17px;font-weight:700;margin:14px 0 4px;color:var(--cp);line-height:1.4}
+#pdftxt h3{font-size:15px;font-weight:600;margin:10px 0 3px;color:var(--ct);line-height:1.4}
+#pdftxt h2+p,#pdftxt h3+p{margin-top:0}
+.wt{cursor:pointer;border-radius:3px;transition:background .1s;display:inline}
+.wt:hover{background:var(--cpbg)}
+.wt.pend{background:var(--cp);color:#fff;border-radius:3px}
+.wt.inv{background:#D1FAE5;color:#065F46;border-radius:3px}
+
+/* PENDING TAGS */
+.tlist{display:flex;flex-wrap:wrap;gap:7px;padding:6px 0}
+.tag{display:inline-flex;align-items:center;gap:5px;background:var(--cpbg);color:var(--cp);padding:4px 10px 4px 12px;border-radius:20px;font-size:13px}
+.tagx{background:none;border:none;color:var(--cpl);cursor:pointer;font-size:17px;line-height:1;padding:0;display:flex;align-items:center}
+
+/* GEN PROGRESS */
+.genbox{background:var(--cpbg);border-radius:12px;padding:14px;margin-top:12px}
+.genbg{background:rgba(79,70,229,.15);border-radius:99px;height:7px;margin:9px 0 4px}
+.genbar{background:var(--cp);height:100%;border-radius:99px;transition:width .5s}
+
+/* REVIEW */
+.rvprog{background:var(--cb);border-radius:99px;height:5px;margin-bottom:14px;overflow:hidden}
+.rvprogfill{background:var(--cp);height:100%;border-radius:99px;transition:width .4s}
+.qcard{background:var(--csurf);border-radius:16px;padding:22px;margin-bottom:13px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.qtype{font-size:11px;color:var(--cm);margin-bottom:7px}
+.qdisplay{font-size:26px;font-weight:800;color:var(--cp);margin-bottom:6px;line-height:1.3;word-break:break-word}
+.qdisplay.def{font-size:15px;font-weight:400;color:var(--ct);font-style:italic}
+.qprompt{font-size:13px;color:var(--cm);margin-bottom:16px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{
+  padding:12px 9px;border:1.5px solid var(--cb);border-radius:10px;
+  background:var(--csurf);cursor:pointer;font-size:13px;line-height:1.4;
+  text-align:left;transition:all .15s;font-family:inherit;color:var(--ct);min-height:50px;
+}
+.opt:hover:not(:disabled){border-color:var(--cp);background:var(--cpbg)}
+.opt:disabled{cursor:default}
+.opt.ok{border-color:var(--cs);background:#D1FAE5;color:#065F46}
+.opt.no{border-color:var(--ce);background:#FEE2E2;color:#B91C1C}
+.fb{margin-top:13px;padding:12px 13px;border-radius:10px;font-size:13px;line-height:1.7;display:none}
+.fb.ok{background:#D1FAE5;color:#065F46}
+.fb.no{background:#FEE2E2;color:#B91C1C}
+
+/* REVIEW SETUP */
+.rvf{display:flex;flex-direction:column;gap:9px;margin:11px 0 16px}
+.rvo{
+  display:flex;align-items:center;gap:13px;padding:13px;
+  border:1.5px solid var(--cb);border-radius:11px;cursor:pointer;transition:all .15s;
+}
+.rvo.on{border-color:var(--cp);background:var(--cpbg)}
+.rvchk{
+  width:22px;height:22px;border:2px solid var(--cb);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  color:transparent;flex-shrink:0;transition:all .15s;
+}
+.rvo.on .rvchk{background:var(--cp);border-color:var(--cp);color:#fff}
+
+/* SUMMARY */
+.summ{text-align:center;padding:28px 14px}
+.sumemj{font-size:70px;margin-bottom:8px}
+.sumscore{font-size:68px;font-weight:900;color:var(--cp);line-height:1}
+.sumlbl{font-size:14px;color:var(--cm);margin:8px 0 26px}
+
+/* WORD DETAIL */
+.dword{font-size:32px;font-weight:900;color:var(--cp);margin-bottom:6px}
+.dfield{margin-bottom:13px}
+.dlbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--cm);margin-bottom:4px}
+.dval{font-size:14px;line-height:1.7}
+
+/* MODAL */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;backdrop-filter:blur(3px);animation:fi .2s;
+}
+.modal{
+  background:var(--csurf);border-radius:20px;padding:22px;
+  width:100%;max-width:420px;max-height:88vh;overflow-y:auto;
+}
+.mtitle{font-size:17px;font-weight:700;margin-bottom:13px}
+
+/* TOAST */
+#toast{
+  position:fixed;bottom:calc(var(--nh) + 18px);left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:#1E293B;color:#fff;padding:9px 18px;border-radius:24px;
+  font-size:13px;z-index:999;opacity:0;pointer-events:none;
+  transition:all .3s;white-space:nowrap;max-width:calc(100vw - 32px);
+  overflow:hidden;text-overflow:ellipsis;
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{background:var(--cs)}
+#toast.err{background:var(--ce)}
+
+/* SPINNER */
+.spin{width:20px;height:20px;border:2.5px solid rgba(79,70,229,.2);border-top-color:var(--cp);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+.spin.w{border-color:rgba(255,255,255,.3);border-top-color:#fff}
+
+/* SETTINGS */
+.slbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--cm);margin-bottom:6px;display:block}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 16px;color:var(--cm)}
+.eico{font-size:50px;margin-bottom:12px}
+.etit{font-size:16px;font-weight:600;color:var(--ct);margin-bottom:5px}
+
+/* UTILS */
+.row{display:flex;align-items:center}
+.rbet{display:flex;align-items:center;justify-content:space-between}
+.col{display:flex;flex-direction:column}
+.g4{gap:4px}.g8{gap:8px}.g12{gap:12px}
+.mt4{margin-top:4px}.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}
+.f11{font-size:11px}.f13{font-size:13px}.f14{font-size:14px}
+.muted{color:var(--cm)}.bold{font-weight:700}.hidden{display:none!important}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--cb);border-radius:2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.fadein{animation:fi .25s}
+.divider{height:1px;background:var(--cb);margin:12px 0}
+
+/* MODE TOGGLE */
+.mtog{display:flex;background:var(--cb);border-radius:10px;padding:3px;gap:3px}
+.mtog-btn{
+  flex:1;padding:8px 6px;border:none;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;background:transparent;color:var(--cm);font-family:inherit;transition:all .2s;
+}
+.mtog-btn.on{background:var(--csurf);color:var(--cp);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* MANUAL MODE */
+.prompt-ta{
+  width:100%;padding:10px 12px;border:1.5px solid var(--cb);border-radius:9px;
+  font-size:12px;font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;
+  line-height:1.6;background:#F8FAFC;color:var(--ct);resize:vertical;outline:none;
+}
+.prompt-ta:focus{border-color:var(--cp)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- HOME SCREEN -->
+<div id="s-home">
+  <div class="home-logo">📚</div>
+  <h1 class="home-title">词记</h1>
+  <p class="home-sub">智能单词记忆工具<br>导入PDF · 生成释义 · 轻松复习</p>
+  <div class="home-btns">
+    <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
+    <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
+  </div>
+  <p class="home-ver">v 1.1.0</p>
+</div>
+
+<!-- MAIN APP -->
+<div id="main">
+
+  <!-- ── VOCAB SCREEN ── -->
+  <div id="s-vocab" class="is">
+    <div class="hdr">
+      <span class="hdr-title">📚 生词本</span>
+      <button class="btn btn-sm btn-g" onclick="selAll()">全选</button>
+    </div>
+    <div class="cnt" id="vocab-cnt"></div>
+    <div id="btoolbar">
+      <span id="seltxt" class="f14 bold">已选 0 个</span>
+      <div class="row g8">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="showBatchProf()">修改熟练度</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDelete()">删除</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="clearSel()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD SCREEN ── -->
+  <div id="s-add" class="is">
+    <div class="hdr">
+      <span class="hdr-title">➕ 添加生词</span>
+      <button class="btn btn-sm btn-g" id="clearpdf-btn" onclick="clearPDF()" style="display:none">重新上传</button>
+    </div>
+    <div class="cnt">
+      <div id="upload-zone">
+        <div class="dzone" id="dzone"
+             onclick="document.getElementById('pdf-input').click()"
+             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="dico">📄</div>
+          <div class="bold mb8">点击或拖拽上传 PDF</div>
+          <div class="f13 muted">支持 .pdf 格式，双击单词可添加到生词本</div>
+        </div>
+        <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelect(event)">
+      </div>
+      <div id="pdf-loading" class="hidden" style="text-align:center;padding:40px">
+        <div class="spin" style="margin:0 auto 12px"></div>
+        <div class="muted">正在解析 PDF...</div>
+      </div>
+      <div id="pdf-section" class="hidden">
+        <div class="card">
+          <div class="rbet mb12">
+            <span class="bold f14">双击单词添加到生词本</span>
+            <span id="pdf-pages" class="f11 muted"></span>
+          </div>
+          <div id="pdftxt"></div>
+        </div>
+        <div id="pend-box" class="card hidden">
+          <div class="rbet mb8">
+            <span class="bold f14">待添加 (<span id="pend-cnt">0</span>)</span>
+            <button class="btn btn-sm btn-g" onclick="clearPend()">清空</button>
+          </div>
+          <div id="pend-tags" class="tlist"></div>
+
+          <!-- 模式切换 -->
+          <div class="mtog mt12">
+            <button class="mtog-btn on" id="mode-manual-btn" onclick="setGenMode('manual')">✍️ 手动模式</button>
+            <button class="mtog-btn" id="mode-api-btn" onclick="setGenMode('api')">⚡ API 模式</button>
+          </div>
+
+          <!-- 手动模式 UI -->
+          <div id="manual-ui" class="mt12">
+            <button class="btn btn-p btn-full" onclick="genManualPrompt()">📋 生成释义提示词</button>
+            <div id="manual-prompt-box" class="hidden">
+              <div class="divider"></div>
+              <div class="rbet mb8">
+                <span class="f13 muted">复制后粘贴到 claude.ai</span>
+                <button class="btn btn-sm btn-o" onclick="copyPrompt()">一键复制</button>
+              </div>
+              <textarea id="manual-prompt-ta" class="prompt-ta" rows="10" readonly></textarea>
+              <div class="divider"></div>
+              <div class="f13 bold mb8">将 claude.ai 返回的 JSON 粘贴到此处：</div>
+              <textarea id="manual-json-ta" class="prompt-ta" rows="7"
+                placeholder='[{"word":"abandon","chinese":"放弃","english":"...","usage":"...","example":"..."}]'></textarea>
+              <button class="btn btn-p btn-full mt8" onclick="importManualJSON()">✅ 导入释义</button>
+            </div>
+          </div>
+
+          <!-- API 模式 UI -->
+          <div id="api-ui" class="mt12 hidden">
+            <button id="gen-btn" class="btn btn-p btn-full" onclick="batchGen()">✨ 批量生成释义</button>
+            <div id="genprog" class="genbox hidden">
+              <div class="row g8">
+                <div class="spin"></div>
+                <span id="gentxt" class="f13 muted">正在生成...</span>
+              </div>
+              <div class="genbg"><div class="genbar" id="genbar" style="width:0"></div></div>
+              <div id="genres" class="f11 muted" style="text-align:right;margin-top:4px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REVIEW SCREEN ── -->
+  <div id="s-review" class="is">
+    <div class="hdr"><span class="hdr-title">🧠 单词复习</span></div>
+    <div class="cnt" id="review-cnt"></div>
+  </div>
+
+  <!-- ── SETTINGS SCREEN ── -->
+  <div id="s-settings" class="is">
+    <div class="hdr"><span class="hdr-title">⚙️ 设置</span></div>
+    <div class="cnt">
+      <div class="mb12">
+        <span class="slbl">Claude API Key</span>
+        <div class="card">
+          <p class="f13 muted mb8">用于批量生成单词释义，Key 仅存储在本地浏览器。</p>
+          <input type="password" class="inp" id="api-inp" placeholder="sk-ant-api03-...">
+          <button class="btn btn-p btn-full mt8" onclick="saveKey()">保存 API Key</button>
+        </div>
+      </div>
+      <div class="mb12">
+        <span class="slbl">数据管理</span>
+        <div class="card col g8">
+          <button class="btn btn-o" onclick="importJSON()">📂 导入生词本 (JSON)</button>
+          <button class="btn btn-o" onclick="exportJSON()">💾 导出生词本 (JSON)</button>
+          <button class="btn btn-g" style="color:var(--ce)" onclick="confirmClear()">🗑️ 清空所有数据</button>
+        </div>
+      </div>
+      <div>
+        <span class="slbl">词库统计</span>
+        <div class="card" id="stats-box"></div>
+      </div>
+      <div class="mt12">
+        <span class="slbl">关于</span>
+        <div class="card" style="text-align:center;padding:18px 14px">
+          <div style="font-size:32px;margin-bottom:8px">📚</div>
+          <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
+          <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.1.0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav id="nav">
+    <button class="nb on" data-v="vocab" onclick="goView('vocab')">
+      <span class="ni">📚</span><span>生词本</span>
+    </button>
+    <button class="nb" data-v="add" onclick="goView('add')">
+      <span class="ni">➕</span><span>添加</span>
+    </button>
+    <button class="nb" data-v="review" onclick="goView('review')">
+      <span class="ni">🧠</span><span>复习</span>
+    </button>
+    <button class="nb" data-v="settings" onclick="goView('settings')">
+      <span class="ni">⚙️</span><span>设置</span>
+    </button>
+  </nav>
+
+</div><!-- /main -->
+
+<!-- MODALS -->
+<div id="modals"></div>
+
+</div><!-- /app -->
+
+<script src="./pdf.min.js"></script>
+<script>
+'use strict';
+
+/* ═══════════════════════════════
+   PWA SETUP
+═══════════════════════════════ */
+(function(){
+  const m={
+    name:'词记 · 单词记忆',short_name:'词记',
+    description:'智能单词记忆PWA工具',
+    start_url:'./',display:'standalone',
+    background_color:'#F8FAFC',theme_color:'#4F46E5',
+    icons:[{
+      src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234F46E5'/%3E%3Ctext y='.88em' font-size='70' x='15'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E",
+      sizes:'any',type:'image/svg+xml'
+    }]
+  };
+  const mb=new Blob([JSON.stringify(m)],{type:'application/json'});
+  document.getElementById('pwa-manifest').href=URL.createObjectURL(mb);
+
+  if('serviceWorker' in navigator){
+    const sw=`
+const CACHE='wr-1.1.0';
+const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
+self.addEventListener('install',e=>e.waitUntil(
+  caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
+));
+self.addEventListener('activate',e=>e.waitUntil(
+  caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+  .then(()=>clients.claim())
+));
+self.addEventListener('fetch',e=>{
+  if(!e.request.url.startsWith('http'))return;
+  if(e.request.url.includes('api.anthropic.com'))return;
+  e.respondWith(
+    caches.open(CACHE).then(c=>
+      c.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+        if(res.status===200)c.put(e.request,res.clone());
+        return res;
+      }))
+    )
+  );
+});`;
+    const sb=new Blob([sw],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(sb)).catch(()=>{});
+  }
+})();
+
+/* ═══════════════════════════════
+   CONSTANTS
+═══════════════════════════════ */
+const PROFS=['完全不会','掌握中','已掌握'];
+const PCLS=['b0','b1','b2'];
+const SK_VOCAB='wr_vocab';
+const SK_KEY='wr_apikey';
+
+/* ═══════════════════════════════
+   STATE
+═══════════════════════════════ */
+const S={
+  vocab:[],
+  pend:[],          // pending words (lowercase strings)
+  apiKey:'',
+  rvFilters:['完全不会'],
+  rvSess:null,
+  sel:new Set(),    // selected word IDs
+  vFilter:'all',    // vocab screen filter
+  importBuf:null,   // temp import data
+  genMode:'manual', // 'manual' | 'api'
+};
+
+/* ═══════════════════════════════
+   STORAGE
+═══════════════════════════════ */
+function loadVocab(){
+  try{return JSON.parse(localStorage.getItem(SK_VOCAB))||null;}catch{return null;}
+}
+function saveVocab(){localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));}
+
+/* ═══════════════════════════════
+   INIT
+═══════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof pdfjsLib!=='undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='./pdf.worker.min.js';
+  }
+  S.apiKey=localStorage.getItem(SK_KEY)||'';
+  document.getElementById('api-inp').value=S.apiKey;
+
+  const saved=loadVocab();
+  if(saved!==null){
+    S.vocab=saved;
+    showMain();
+  }
+  // else: stay on home screen
+});
+
+/* ═══════════════════════════════
+   HOME
+═══════════════════════════════ */
+function newVocab(){
+  S.vocab=[];saveVocab();showMain();
+}
+function showMain(){
+  document.getElementById('s-home').style.display='none';
+  const m=document.getElementById('main');
+  m.classList.add('on');
+  goView('vocab');
+}
+function showHome(){
+  document.getElementById('main').classList.remove('on');
+  document.getElementById('s-home').style.display='';
+}
+
+/* ═══════════════════════════════
+   NAVIGATION
+═══════════════════════════════ */
+function goView(v){
+  document.querySelectorAll('.is').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.getElementById('s-'+v).classList.add('on');
+  if(v==='vocab')renderVocab();
+  if(v==='review')renderRvSetup();
+  if(v==='settings')renderStats();
+}
+
+/* ═══════════════════════════════
+   VOCABULARY SCREEN
+═══════════════════════════════ */
+function filteredVocab(){
+  return S.vFilter==='all'?S.vocab:S.vocab.filter(w=>w.proficiency===S.vFilter);
+}
+
+function renderVocab(){
+  const el=document.getElementById('vocab-cnt');
+  if(S.vocab.length===0){
+    el.innerHTML=`<div class="empty"><div class="eico">📖</div>
+      <div class="etit">生词本是空的</div>
+      <div class="muted f13">去「添加」标签上传PDF并双击单词添加</div></div>`;
+    hideBT();return;
+  }
+  const cnt={};
+  PROFS.forEach(p=>cnt[p]=S.vocab.filter(w=>w.proficiency===p).length);
+  const filt=['all',...PROFS].map(f=>{
+    const lbl=f==='all'?`全部 (${S.vocab.length})`:`${f} (${cnt[f]||0})`;
+    return `<button class="chip ${S.vFilter===f?'on':''}" onclick="setVF('${f}')">${lbl}</button>`;
+  }).join('');
+  const items=filteredVocab();
+  const list=items.length===0
+    ?`<div class="empty"><div class="eico">🔍</div><div class="etit">无匹配单词</div></div>`
+    :items.map(w=>`
+      <div class="wi ${S.sel.has(w.id)?'sel':''}">
+        <div class="wchk" onclick="toggleSel('${w.id}')">${S.sel.has(w.id)?'✓':''}</div>
+        <div class="winfo" onclick="showDetail('${w.id}')">
+          <div class="wname">${esc(w.word)}</div>
+          <div class="wzh">${w.chineseDefinition?esc(w.chineseDefinition.slice(0,60)):'⏳ 待生成释义'}</div>
+        </div>
+        <span class="bdg ${PCLS[PROFS.indexOf(w.proficiency)]}">${w.proficiency}</span>
+      </div>`).join('');
+  el.innerHTML=`<div class="chips">${filt}</div>${list}`;
+  updateBT();
+}
+
+function setVF(f){S.vFilter=f;S.sel.clear();renderVocab();}
+
+function selAll(){
+  const f=filteredVocab();
+  if(S.sel.size===f.length)S.sel.clear();
+  else f.forEach(w=>S.sel.add(w.id));
+  renderVocab();
+}
+
+function toggleSel(id){
+  if(S.sel.has(id))S.sel.delete(id);else S.sel.add(id);
+  // Update just this item
+  document.querySelectorAll('.wi').forEach(el=>{
+    const chk=el.querySelector('.wchk');
+    const inf=el.querySelector('.winfo');
+    if(!inf)return;
+    const wid=inf.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+    if(wid===id){
+      el.classList.toggle('sel',S.sel.has(id));
+      if(chk)chk.textContent=S.sel.has(id)?'✓':'';
+    }
+  });
+  updateBT();
+}
+
+function clearSel(){S.sel.clear();renderVocab();}
+
+function updateBT(){
+  const tb=document.getElementById('btoolbar');
+  const n=S.sel.size;
+  tb.style.display=n>0?'flex':'none';
+  if(n>0)document.getElementById('seltxt').textContent=`已选 ${n} 个`;
+}
+function hideBT(){document.getElementById('btoolbar').style.display='none';}
+
+function showBatchProf(){
+  openModal(`<div class="mtitle">批量修改熟练度</div>
+    <p class="f13 muted mb12">将 ${S.sel.size} 个单词的熟练度设为：</p>
+    <div class="col g8">
+      ${PROFS.map((p,i)=>`
+        <button class="btn btn-o" onclick="batchSetP(${i});closeModal()">
+          <span class="bdg ${PCLS[i]}">${p}</span>
+        </button>`).join('')}
+    </div>`);
+}
+
+function batchSetP(idx){
+  const p=PROFS[idx];
+  S.sel.forEach(id=>{const w=S.vocab.find(x=>x.id===id);if(w)w.proficiency=p;});
+  saveVocab();S.sel.clear();renderVocab();
+  toast(`已更新熟练度为「${p}」`,'ok');
+}
+
+function batchDelete(){
+  const n=S.sel.size;
+  openModal(`
+    <div class="mtitle">🗑️ 删除单词</div>
+    <p class="f13 muted mb16">确定删除选中的 <strong>${n}</strong> 个单词？此操作不可撤销。</p>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-d" style="flex:1" onclick="doBatchDelete()">确认删除</button>
+    </div>`);
+}
+
+function doBatchDelete(){
+  S.vocab=S.vocab.filter(x=>!S.sel.has(x.id));
+  saveVocab();S.sel.clear();closeModal();renderVocab();
+  toast('已删除所选单词','ok');
+}
+
+function showDetail(id){
+  const w=S.vocab.find(x=>x.id===id);if(!w)return;
+  const pi=PROFS.indexOf(w.proficiency);
+  openModal(`
+    <div class="dword">${esc(w.word)}</div>
+    <span class="bdg ${PCLS[pi]}">${w.proficiency}</span>
+    <div class="divider"></div>
+    <div class="dfield"><div class="dlbl">中文释义</div><div class="dval">${esc(w.chineseDefinition)||'暂无'}</div></div>
+    <div class="dfield"><div class="dlbl">英文释义</div><div class="dval">${esc(w.englishDefinition)||'暂无'}</div></div>
+    <div class="dfield"><div class="dlbl">用法说明</div><div class="dval">${esc(w.usage)||'暂无'}</div></div>
+    <div class="dfield"><div class="dlbl">例句</div><div class="dval" style="font-style:italic">${esc(w.examples)||'暂无'}</div></div>
+    <div class="divider"></div>
+    <div class="f13 muted mb8">修改熟练度</div>
+    <div class="row g8 mb12 flex-wrap">
+      ${PROFS.map((p,i)=>`
+        <button class="btn btn-sm ${pi===i?'btn-p':'btn-g'}" onclick="setWP('${id}',${i});closeModal()">${p}</button>
+      `).join('')}
+    </div>
+    <button class="btn btn-d btn-full" onclick="delWord('${id}');closeModal()">🗑️ 删除此单词</button>
+  `);
+}
+
+function setWP(id,pi){
+  const w=S.vocab.find(x=>x.id===id);
+  if(w){w.proficiency=PROFS[pi];saveVocab();renderVocab();}
+}
+
+function delWord(id){
+  S.vocab=S.vocab.filter(x=>x.id!==id);
+  S.sel.delete(id);saveVocab();renderVocab();
+  toast('单词已删除');
+}
+
+/* ═══════════════════════════════
+   ADD SCREEN / PDF
+═══════════════════════════════ */
+function onDragOver(e){e.preventDefault();document.getElementById('dzone').classList.add('drag');}
+function onDragLeave(){document.getElementById('dzone').classList.remove('drag');}
+function onDrop(e){
+  e.preventDefault();document.getElementById('dzone').classList.remove('drag');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type==='application/pdf')loadPDF(f);
+  else toast('请上传 PDF 文件','err');
+}
+function onFileSelect(e){const f=e.target.files[0];if(f)loadPDF(f);e.target.value='';}
+
+function cleanPDFText(s){
+  return s
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,'') // control chars
+    .replace(/[\uE000-\uF8FF\uFFFD\uFFFF]/g,'')        // private use / garbage glyphs
+    .replace(/\xAD/g,'')                                // soft hyphen
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')               // zero-width chars
+    .replace(/\s+/g,' ').trim();
+}
+
+async function loadPDF(file){
+  document.getElementById('upload-zone').classList.add('hidden');
+  document.getElementById('pdf-loading').classList.remove('hidden');
+  try{
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    const blocks=[];
+    const total=pdf.numPages;
+    for(let i=1;i<=total;i++){
+      const pg=await pdf.getPage(i);
+      const tc=await pg.getTextContent();
+      const vp=pg.getViewport({scale:1});
+      const pageH=vp.height;
+      // Map items to top-down coords with height; clean garbage chars
+      const raw=tc.items.filter(it=>it.str&&it.str.trim()).map(it=>({
+        str:cleanPDFText(it.str), x:it.transform[4], y:pageH-it.transform[5], h:it.height||0
+      })).filter(it=>it.str);
+      if(!raw.length)continue;
+      raw.sort((a,b)=>Math.abs(a.y-b.y)<3?a.x-b.x:a.y-b.y);
+      // Group into lines (items within 3pt vertically)
+      const lines=[];
+      for(const it of raw){
+        const last=lines[lines.length-1];
+        if(last&&Math.abs(it.y-last.y)<3){
+          last.texts.push(it.str); last.h=Math.max(last.h,it.h);
+        }else{
+          lines.push({y:it.y,h:it.h||0,texts:[it.str]});
+        }
+      }
+      // Median body font height for heading detection
+      const hs=lines.map(l=>l.h).filter(h=>h>0).sort((a,b)=>a-b);
+      const medH=hs.length?hs[Math.floor(hs.length/2)]:12;
+      // Merge lines into semantic blocks
+      let cur=null;
+      for(const line of lines){
+        const txt=line.texts.join(' ').replace(/\s+/g,' ').trim();
+        if(!txt)continue;
+        const h=line.h||medH;
+        const type=h>medH*1.5?'h2':h>medH*1.2?'h3':'para';
+        if(!cur){
+          cur={type,texts:[txt],lastY:line.y,h};blocks.push(cur);
+        }else{
+          const gap=line.y-cur.lastY;
+          if(gap>h*1.7||type!==cur.type){
+            cur={type,texts:[txt],lastY:line.y,h};blocks.push(cur);
+          }else{
+            cur.texts.push(txt);cur.lastY=line.y;
+          }
+        }
+      }
+      // Page separator between pages (not after last page)
+      if(i<total&&blocks.length)blocks.push({type:'sep',label:`第 ${i} 页`});
+    }
+    document.getElementById('pdf-pages').textContent=`共 ${total} 页`;
+    renderPDFText(blocks);
+    document.getElementById('pdf-loading').classList.add('hidden');
+    document.getElementById('pdf-section').classList.remove('hidden');
+    document.getElementById('clearpdf-btn').style.display='';
+  }catch(err){
+    document.getElementById('pdf-loading').classList.add('hidden');
+    document.getElementById('upload-zone').classList.remove('hidden');
+    toast('PDF解析失败: '+err.message,'err');
+  }
+}
+
+function renderPDFText(blocks){
+  const con=document.getElementById('pdftxt');
+  con.innerHTML='';
+  // Detect exam/test-paper format (question numbers + option letters)
+  const qPat=/^[\s　]*(\d{1,3}[.、．。]|[（(]\d{1,3}[)）]|第\d+题)/;
+  const optPat=/^[\s　]*[A-Da-d][.、．)）\s]/;
+  const paras=blocks.filter(b=>b.type==='para');
+  let examHits=0;
+  paras.forEach(b=>{const t=b.texts[0]||'';if(qPat.test(t)||optPat.test(t))examHits++;});
+  const isExam=paras.length>=5&&examHits/paras.length>0.18;
+  const tagMap={h2:'h2',h3:'h3',para:'p'};
+  blocks.forEach(block=>{
+    // Page separator
+    if(block.type==='sep'){
+      const div=document.createElement('div');
+      div.className='pg-sep';
+      div.textContent=block.label;
+      con.appendChild(div);
+      return;
+    }
+    const text=block.texts.join(' ').replace(/\s+/g,' ').trim();
+    if(!text)return;
+    const el=document.createElement(tagMap[block.type]||'p');
+    // Exam format: indent options, bold question numbers
+    if(isExam&&block.type==='para'){
+      if(optPat.test(text))el.classList.add('exam-opt');
+      else if(qPat.test(text))el.classList.add('exam-q');
+    }
+    // Split: odd indices = words, even = non-words
+    text.split(/([a-zA-Z]+(?:['\u2019\u2018-][a-zA-Z]+)*)/).forEach((part,i)=>{
+      if(i%2===1){
+        const low=part.toLowerCase();
+        const inV=S.vocab.some(w=>w.word.toLowerCase()===low);
+        const inP=S.pend.includes(low);
+        const sp=document.createElement('span');
+        sp.className='wt'+(inV?' inv':inP?' pend':'');
+        sp.textContent=part;
+        sp.title=inV?'已在生词本':inP?'已标记':'双击添加';
+        sp.addEventListener('dblclick',()=>addPend(part));
+        el.appendChild(sp);
+      }else{
+        el.appendChild(document.createTextNode(part));
+      }
+    });
+    con.appendChild(el);
+  });
+}
+
+function addPend(word){
+  const low=word.toLowerCase().trim();
+  if(low.length<2)return;
+  if(S.vocab.some(w=>w.word.toLowerCase()===low)){
+    toast(`"${word}" 已在生词本中`,'err');return;
+  }
+  if(S.pend.includes(low)){
+    // Toggle off
+    S.pend=S.pend.filter(w=>w!==low);
+    updatePendUI();
+    document.querySelectorAll('.wt').forEach(el=>{
+      if(el.textContent.toLowerCase()===low)el.className='wt';
+    });
+    toast(`已移除 "${word}"`);return;
+  }
+  S.pend.push(low);
+  updatePendUI();
+  document.querySelectorAll('.wt').forEach(el=>{
+    if(el.textContent.toLowerCase()===low)el.className='wt pend';
+  });
+  toast(`已添加 "${word}"`,'ok');
+}
+
+function updatePendUI(){
+  const n=S.pend.length;
+  document.getElementById('pend-cnt').textContent=n;
+  const box=document.getElementById('pend-box');
+  n>0?box.classList.remove('hidden'):box.classList.add('hidden');
+  document.getElementById('pend-tags').innerHTML=
+    S.pend.map((w,i)=>`<span class="tag">${esc(w)}<button class="tagx" onclick="removePendIdx(${i})">×</button></span>`).join('');
+}
+
+function removePendIdx(i){
+  const word=S.pend[i];
+  S.pend.splice(i,1);
+  updatePendUI();
+  document.querySelectorAll('.wt').forEach(el=>{
+    if(el.textContent.toLowerCase()===word)el.className='wt';
+  });
+}
+
+function clearPend(){
+  S.pend=[];updatePendUI();
+  document.querySelectorAll('.wt.pend').forEach(el=>el.className='wt');
+  document.getElementById('manual-prompt-box').classList.add('hidden');
+  document.getElementById('manual-json-ta').value='';
+}
+
+/* ═══════════════════════════════
+   MODE TOGGLE
+═══════════════════════════════ */
+function setGenMode(mode){
+  S.genMode=mode;
+  document.getElementById('mode-manual-btn').classList.toggle('on',mode==='manual');
+  document.getElementById('mode-api-btn').classList.toggle('on',mode==='api');
+  document.getElementById('manual-ui').classList.toggle('hidden',mode==='api');
+  document.getElementById('api-ui').classList.toggle('hidden',mode==='manual');
+}
+
+/* ═══════════════════════════════
+   MANUAL MODE
+═══════════════════════════════ */
+function genManualPrompt(){
+  if(!S.pend.length){toast('请先标记单词','err');return;}
+  const template=S.pend.map(w=>({
+    word:w,chinese:'中文释义',english:'英文释义',usage:'用法说明',example:'例句'
+  }));
+  const prompt=`请为以下英语单词生成释义，严格按照JSON格式返回，不要有任何其他文字：\n\n${JSON.stringify(template,null,2)}\n\n单词列表：${S.pend.join(', ')}`;
+  document.getElementById('manual-prompt-ta').value=prompt;
+  document.getElementById('manual-prompt-box').classList.remove('hidden');
+  document.getElementById('manual-json-ta').value='';
+}
+
+function copyPrompt(){
+  const val=document.getElementById('manual-prompt-ta').value;
+  if(!val)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(val)
+      .then(()=>toast('已复制到剪贴板','ok'))
+      .catch(()=>fallbackCopy(val));
+  }else{
+    fallbackCopy(val);
+  }
+}
+
+function fallbackCopy(text){
+  const ta=document.getElementById('manual-prompt-ta');
+  ta.select();ta.setSelectionRange(0,99999);
+  try{document.execCommand('copy');toast('已复制到剪贴板','ok');}
+  catch{toast('请手动全选复制','err');}
+}
+
+function importManualJSON(){
+  const raw=document.getElementById('manual-json-ta').value.trim();
+  if(!raw){toast('请先粘贴 JSON 内容','err');return;}
+  let arr;
+  try{
+    const m=raw.match(/\[[\s\S]*\]/);
+    if(!m)throw new Error('未找到 JSON 数组');
+    arr=JSON.parse(m[0]);
+    if(!Array.isArray(arr))throw new Error('内容不是数组');
+  }catch(err){
+    toast('JSON 解析失败：'+err.message,'err');return;
+  }
+  const now=new Date().toISOString();
+  let added=0,updated=0;
+  arr.forEach(r=>{
+    if(!r.word)return;
+    const low=r.word.toLowerCase();
+    // Support both key styles: chinese/english/example and chineseDefinition/englishDefinition/examples
+    const def={
+      chineseDefinition:r.chinese||r.chineseDefinition||'',
+      englishDefinition:r.english||r.englishDefinition||'',
+      usage:r.usage||'',
+      examples:r.example||r.examples||''
+    };
+    const existing=S.vocab.find(w=>w.word.toLowerCase()===low);
+    if(existing){
+      Object.assign(existing,def);updated++;
+    }else if(S.pend.includes(low)){
+      S.vocab.push({id:uid(),word:r.word,proficiency:'完全不会',...def,addedAt:now});
+      added++;
+    }
+  });
+  saveVocab();
+  // Clear imported words from pending
+  const imported=arr.map(r=>(r.word||'').toLowerCase()).filter(Boolean);
+  S.pend=S.pend.filter(w=>!imported.includes(w));
+  updatePendUI();
+  // Re-highlight PDF text
+  document.querySelectorAll('.wt').forEach(el=>{
+    const low=el.textContent.toLowerCase();
+    if(S.vocab.some(w=>w.word.toLowerCase()===low))el.className='wt inv';
+  });
+  document.getElementById('manual-json-ta').value='';
+  document.getElementById('manual-prompt-box').classList.add('hidden');
+  toast(`已添加 ${added} 个，更新 ${updated} 个单词`,'ok');
+}
+
+function clearPDF(){
+  S.pend=[];
+  document.getElementById('pdf-section').classList.add('hidden');
+  document.getElementById('upload-zone').classList.remove('hidden');
+  document.getElementById('pdftxt').innerHTML='';
+  document.getElementById('clearpdf-btn').style.display='none';
+  updatePendUI();
+}
+
+async function batchGen(){
+  if(!S.pend.length){toast('请先标记单词','err');return;}
+  if(!S.apiKey){toast('请先在「设置」中填写 Claude API Key','err');return;}
+
+  const words=[...S.pend];
+  const btn=document.getElementById('gen-btn');
+  const prog=document.getElementById('genprog');
+  const bar=document.getElementById('genbar');
+  const txt=document.getElementById('gentxt');
+  const res=document.getElementById('genres');
+
+  btn.disabled=true;
+  prog.classList.remove('hidden');
+  bar.style.width='0%';res.textContent='';
+
+  const CHUNK=15;
+  const chunks=[];
+  for(let i=0;i<words.length;i+=CHUNK)chunks.push(words.slice(i,i+CHUNK));
+
+  const results=[];let failed=0;
+  for(let ci=0;ci<chunks.length;ci++){
+    const chunk=chunks[ci];
+    const from=ci*CHUNK+1,to=Math.min((ci+1)*CHUNK,words.length);
+    txt.textContent=`正在处理 ${from}–${to} / ${words.length} 个单词...`;
+    bar.style.width=`${(ci/chunks.length*85).toFixed(0)}%`;
+    try{
+      const r=await claudeChunk(chunk);
+      results.push(...r);
+    }catch(err){
+      console.error(err);failed+=chunk.length;
+      chunk.forEach(w=>results.push({word:w,chineseDefinition:'',englishDefinition:'',usage:'',examples:''}));
+    }
+  }
+
+  bar.style.width='100%';txt.textContent='正在保存...';
+
+  const now=new Date().toISOString();
+  results.forEach(r=>{
+    const low=(r.word||'').toLowerCase();
+    if(low&&!S.vocab.some(w=>w.word.toLowerCase()===low)){
+      S.vocab.push({
+        id:uid(),word:r.word||low,proficiency:'完全不会',
+        chineseDefinition:r.chineseDefinition||'',
+        englishDefinition:r.englishDefinition||'',
+        usage:r.usage||'',examples:r.examples||'',addedAt:now
+      });
+    }
+  });
+  saveVocab();
+  S.pend=[];updatePendUI();
+
+  // Re-highlight vocab words in PDF text
+  document.querySelectorAll('.wt').forEach(el=>{
+    const low=el.textContent.toLowerCase();
+    if(S.vocab.some(w=>w.word.toLowerCase()===low))el.className='wt inv';
+  });
+
+  setTimeout(()=>{
+    btn.disabled=false;prog.classList.add('hidden');
+    const ok=results.length-failed;
+    toast(`成功生成 ${ok} 个单词${failed?`，${failed} 个失败`:''}`,failed?'err':'ok');
+  },800);
+}
+
+async function claudeChunk(words){
+  const prompt=`For the following English words, return ONLY a valid JSON array with no extra text or explanation.
+
+Each object must have exactly these keys:
+- "word": the English word (as provided)
+- "chineseDefinition": concise Chinese definition (中文释义，简洁)
+- "englishDefinition": concise English definition (one sentence)
+- "usage": brief usage notes in Chinese, including part of speech (用法说明)
+- "examples": one natural example sentence with Chinese translation
+
+Words: ${words.join(', ')}
+
+Return only the JSON array:`;
+
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':S.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:4096,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+
+  if(!resp.ok){
+    let msg='API Error '+resp.status;
+    try{const e=await resp.json();msg=e.error?.message||msg;}catch{}
+    throw new Error(msg);
+  }
+  const data=await resp.json();
+  const text=data.content?.[0]?.text||'';
+  const m=text.match(/\[[\s\S]*\]/);
+  if(!m)throw new Error('无法解析API响应格式');
+  const arr=JSON.parse(m[0]);
+  if(!Array.isArray(arr))throw new Error('API响应不是数组');
+  return arr;
+}
+
+/* ═══════════════════════════════
+   REVIEW SCREEN
+═══════════════════════════════ */
+function renderRvSetup(){
+  const rc=document.getElementById('review-cnt');
+  const allDef=S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition);
+
+  if(S.vocab.length===0){
+    rc.innerHTML=`<div class="empty"><div class="eico">🧠</div>
+      <div class="etit">还没有生词</div>
+      <div class="muted f13">先去「添加」标签上传PDF并添加单词</div></div>`;return;
+  }
+  if(allDef.length<2){
+    rc.innerHTML=`<div class="empty"><div class="eico">📝</div>
+      <div class="etit">释义不足</div>
+      <div class="muted f13">至少需要2个有完整释义的单词<br>请先批量生成单词释义</div></div>`;return;
+  }
+
+  const cnt={};
+  PROFS.forEach(p=>cnt[p]=allDef.filter(w=>w.proficiency===p).length);
+
+  rc.innerHTML=`
+    <div class="card fadein">
+      <div class="bold f14 mb4">选择复习范围</div>
+      <div class="f13 muted mb12">每个单词2道题：看单词选中文 + 看释义选单词，四选一</div>
+      <div class="rvf">
+        ${PROFS.map((p,i)=>`
+          <div class="rvo ${S.rvFilters.includes(p)?'on':''}" data-pi="${i}" onclick="toggleRvF(${i})">
+            <div class="rvchk">${S.rvFilters.includes(p)?'✓':''}</div>
+            <div>
+              <div class="bold f14">${p}</div>
+              <div class="f13 muted">${cnt[p]} 个有释义的单词</div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-p btn-full" onclick="startRv()">开始复习 ▶</button>
+    </div>`;
+}
+
+function toggleRvF(pi){
+  const p=PROFS[pi];
+  const idx=S.rvFilters.indexOf(p);
+  if(idx>=0){if(S.rvFilters.length>1)S.rvFilters.splice(idx,1);}
+  else S.rvFilters.push(p);
+  document.querySelectorAll('.rvo').forEach(el=>{
+    const i=parseInt(el.dataset.pi);
+    const on=S.rvFilters.includes(PROFS[i]);
+    el.classList.toggle('on',on);
+    el.querySelector('.rvchk').textContent=on?'✓':'';
+  });
+}
+
+function startRv(){
+  const allDef=S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition);
+  const toRv=allDef.filter(w=>S.rvFilters.includes(w.proficiency));
+
+  if(toRv.length===0){toast('所选范围内没有有释义的单词','err');return;}
+  if(allDef.length<4){toast('总共至少需要4个有释义的单词才能复习','err');return;}
+
+  S.rvSess={
+    qs:buildQs(toRv,allDef),
+    allDef,idx:0,correct:0,incorrect:0,answered:false
+  };
+  renderQ();
+}
+
+function buildQs(toRv,allDef){
+  const qs=[];
+  toRv.forEach(word=>{
+    // Q1: word → Chinese
+    {
+      const correct=word.chineseDefinition;
+      const wrongs=allDef.filter(w=>w.id!==word.id&&w.chineseDefinition)
+        .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.chineseDefinition);
+      while(wrongs.length<3)wrongs.push('（其他）');
+      const {opts,ci}=shuffleOpts([correct,...wrongs.slice(0,3)],0);
+      qs.push({
+        type:'w2c',word,display:word.word,isLong:false,
+        prompt:'该单词的中文释义是？',opts,ci,
+        expl:`${word.word}\n中文：${word.chineseDefinition}\n英文：${word.englishDefinition}`
+      });
+    }
+    // Q2: English definition → word
+    {
+      const correct=word.word;
+      const wrongs=allDef.filter(w=>w.id!==word.id)
+        .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.word);
+      while(wrongs.length<3)wrongs.push('—');
+      const {opts,ci}=shuffleOpts([correct,...wrongs.slice(0,3)],0);
+      qs.push({
+        type:'d2w',word,display:word.englishDefinition,isLong:true,
+        prompt:'符合该英文释义的单词是？',opts,ci,
+        expl:`${word.word}：${word.chineseDefinition}${word.usage?'\n用法：'+word.usage:''}`
+      });
+    }
+  });
+  // Shuffle all questions
+  for(let i=qs.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [qs[i],qs[j]]=[qs[j],qs[i]];
+  }
+  return qs;
+}
+
+function shuffleOpts(arr,correctIdx){
+  // Shuffle using Fisher-Yates, tracking correct index
+  const a=[...arr];let ci=correctIdx;
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    if(i===ci)ci=j;else if(j===ci)ci=i;
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return{opts:a,ci};
+}
+
+function renderQ(){
+  const ses=S.rvSess;
+  const rc=document.getElementById('review-cnt');
+  if(ses.idx>=ses.qs.length){renderSumm();return;}
+
+  const q=ses.qs[ses.idx];
+  const prog=(ses.idx/ses.qs.length*100).toFixed(1);
+  ses.answered=false;
+
+  rc.innerHTML=`
+    <div class="fadein">
+      <div class="rvprog"><div class="rvprogfill" style="width:${prog}%"></div></div>
+      <div class="f11 muted" style="text-align:center;margin-bottom:12px">
+        ${ses.idx+1} / ${ses.qs.length} &nbsp;·&nbsp; ✓ ${ses.correct} &nbsp;·&nbsp; ✗ ${ses.incorrect}
+      </div>
+      <div class="qcard">
+        <div class="qtype">${q.type==='w2c'?'看单词 → 选中文':'看释义 → 选单词'}</div>
+        <div class="qdisplay ${q.isLong?'def':''}">${esc(q.display)}</div>
+        <div class="qprompt">${q.prompt}</div>
+        <div class="opts">
+          ${q.opts.map((o,i)=>`<button class="opt" data-idx="${i}" onclick="checkAns(${i})">${esc(o)}</button>`).join('')}
+        </div>
+        <div id="qfb" class="fb"></div>
+      </div>
+      <button id="nxt-btn" class="btn btn-p btn-full hidden" onclick="nextQ()">
+        ${ses.idx+1<ses.qs.length?'下一题 →':'查看结果 →'}
+      </button>
+    </div>`;
+}
+
+function checkAns(si){
+  const ses=S.rvSess;if(ses.answered)return;ses.answered=true;
+  const q=ses.qs[ses.idx];
+  const ok=si===q.ci;
+  if(ok)ses.correct++;else ses.incorrect++;
+
+  document.querySelectorAll('.opt').forEach(btn=>{
+    const idx=parseInt(btn.dataset.idx);
+    btn.disabled=true;
+    if(idx===q.ci)btn.classList.add('ok');
+    else if(idx===si&&!ok)btn.classList.add('no');
+  });
+
+  const fb=document.getElementById('qfb');fb.style.display='block';
+  if(ok){
+    fb.className='fb ok';
+    fb.innerHTML='✓ 正确！<br><small>'+esc(q.expl).replace(/\n/g,'<br>')+'</small>';
+  }else{
+    fb.className='fb no';
+    fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.opts[q.ci])}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
+  }
+  document.getElementById('nxt-btn').classList.remove('hidden');
+}
+
+function nextQ(){S.rvSess.idx++;renderQ();}
+
+function renderSumm(){
+  const ses=S.rvSess;
+  const tot=ses.qs.length;
+  const pct=Math.round(ses.correct/tot*100);
+  const emj=pct>=80?'🎉':pct>=60?'😊':'💪';
+  document.getElementById('review-cnt').innerHTML=`
+    <div class="summ fadein">
+      <div class="sumemj">${emj}</div>
+      <div class="sumscore">${pct}%</div>
+      <div class="sumlbl">${ses.correct} 题正确 · ${ses.incorrect} 题错误 · 共 ${tot} 题</div>
+      <button class="btn btn-p btn-full mb8" onclick="renderRvSetup()">再次复习</button>
+      <button class="btn btn-g btn-full" onclick="goView('vocab')">返回生词本</button>
+    </div>`;
+  S.rvSess=null;
+}
+
+/* ═══════════════════════════════
+   SETTINGS
+═══════════════════════════════ */
+function saveKey(){
+  const k=document.getElementById('api-inp').value.trim();
+  if(!k){toast('请输入有效的 API Key','err');return;}
+  localStorage.setItem(SK_KEY,k);S.apiKey=k;
+  toast('API Key 已保存','ok');
+}
+
+function renderStats(){
+  const tot=S.vocab.length;
+  const cnt={};PROFS.forEach(p=>cnt[p]=S.vocab.filter(w=>w.proficiency===p).length);
+  const box=document.getElementById('stats-box');
+  if(tot===0){box.innerHTML='<div class="muted f13">暂无数据</div>';return;}
+  box.innerHTML=`
+    <div class="rbet mb8"><span>总单词数</span><span class="bold">${tot}</span></div>
+    ${PROFS.map((p,i)=>`
+      <div class="rbet mb8">
+        <span><span class="bdg ${PCLS[i]}">${p}</span></span>
+        <span class="bold">${cnt[p]}</span>
+      </div>`).join('')}
+    <div class="divider"></div>
+    <div style="height:9px;border-radius:99px;overflow:hidden;display:flex">
+      ${PROFS.map((p,i)=>`<div style="flex:${cnt[p]||0};background:${['#EF4444','#F59E0B','#10B981'][i]};transition:flex .5s"></div>`).join('')}
+    </div>`;
+}
+
+/* ═══════════════════════════════
+   IMPORT / EXPORT
+═══════════════════════════════ */
+function importJSON(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json';
+  inp.onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const text=await file.text();
+      const data=JSON.parse(text);
+      if(!Array.isArray(data))throw new Error('需要JSON数组格式');
+      const valid=data.filter(x=>x&&typeof x.word==='string'&&x.word.trim());
+      if(!valid.length)throw new Error('没有找到有效的单词数据');
+      S.importBuf=valid;
+      openModal(`
+        <div class="mtitle">确认导入</div>
+        <p class="f13 muted mb12">即将导入 <strong>${valid.length}</strong> 个单词，与现有生词本合并（已存在的跳过）</p>
+        <div class="row g8">
+          <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+          <button class="btn btn-p" style="flex:1" onclick="doImport()">确认导入</button>
+        </div>`);
+    }catch(err){toast('导入失败：'+err.message,'err');}
+  };
+  inp.click();
+}
+
+function doImport(){
+  if(!S.importBuf)return;
+  let added=0;
+  S.importBuf.forEach(item=>{
+    const low=item.word.toLowerCase();
+    if(!S.vocab.some(w=>w.word.toLowerCase()===low)){
+      S.vocab.push({
+        id:uid(),word:item.word.trim(),
+        proficiency:PROFS.includes(item.proficiency)?item.proficiency:'完全不会',
+        chineseDefinition:item.chineseDefinition||'',
+        englishDefinition:item.englishDefinition||'',
+        usage:item.usage||'',examples:item.examples||'',
+        addedAt:item.addedAt||new Date().toISOString()
+      });
+      added++;
+    }
+  });
+  saveVocab();S.importBuf=null;closeModal();
+  showMain();
+  toast(`成功导入 ${added} 个单词`,'ok');
+}
+
+function exportJSON(){
+  if(!S.vocab.length){toast('生词本为空','err');return;}
+  const data=S.vocab.map(w=>({
+    word:w.word,proficiency:w.proficiency,
+    chineseDefinition:w.chineseDefinition,
+    englishDefinition:w.englishDefinition,
+    usage:w.usage,examples:w.examples
+  }));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`wordrepo_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);
+  toast(`已导出 ${data.length} 个单词`,'ok');
+}
+
+function confirmClear(){
+  openModal(`
+    <div class="mtitle">⚠️ 清空所有数据</div>
+    <p class="f13 muted mb16">确定要删除所有单词数据吗？<strong>此操作不可撤销！</strong></p>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-d" style="flex:1" onclick="doClear()">确认清空</button>
+    </div>`);
+}
+
+function doClear(){
+  localStorage.removeItem(SK_VOCAB);
+  S.vocab=[];S.pend=[];S.sel.clear();
+  closeModal();showHome();
+  toast('数据已清空');
+}
+
+/* ═══════════════════════════════
+   MODAL
+═══════════════════════════════ */
+function openModal(html){
+  closeModal();
+  const ov=document.createElement('div');
+  ov.className='overlay';ov.id='moverlay';
+  ov.onclick=e=>{if(e.target===ov)closeModal();};
+  ov.innerHTML=`<div class="modal">${html}</div>`;
+  document.getElementById('modals').appendChild(ov);
+}
+function closeModal(){
+  const m=document.getElementById('moverlay');if(m)m.remove();
+}
+
+/* ═══════════════════════════════
+   TOAST
+═══════════════════════════════ */
+let _tt;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='on'+(type?' '+type:'');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('on'),3000);
+}
+
+/* ═══════════════════════════════
+   UTILITIES
+═══════════════════════════════ */
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+
+function esc(s){
+  if(!s)return'';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
