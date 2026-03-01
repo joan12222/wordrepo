@@ -205,6 +205,11 @@ body{
 .fb{margin-top:13px;padding:12px 13px;border-radius:10px;font-size:13px;line-height:1.7;display:none}
 .fb.ok{background:#D1FAE5;color:#065F46}
 .fb.no{background:#FEE2E2;color:#B91C1C}
+.spell-area{margin-top:4px}
+.spell-inp{width:100%;padding:11px 13px;font-size:18px;font-weight:600;border:2px solid var(--cb);border-radius:10px;font-family:inherit;outline:none;text-align:center;letter-spacing:1px;box-sizing:border-box;transition:border-color .2s,background .2s;}
+.spell-inp:focus{border-color:var(--cp)}
+.spell-inp.ok{border-color:var(--cs);background:#D1FAE5}
+.spell-inp.no{border-color:var(--ce);background:#FEE2E2}
 
 /* REVIEW SETUP */
 .rvf{display:flex;flex-direction:column;gap:9px;margin:11px 0 16px}
@@ -299,6 +304,27 @@ body{
   line-height:1.6;background:#F8FAFC;color:var(--ct);resize:vertical;outline:none;
 }
 .prompt-ta:focus{border-color:var(--cp)}
+
+/* PHRASE SELECT BUTTON */
+#sel-phrase-btn{
+  position:fixed;bottom:calc(var(--nh)+14px);right:16px;
+  background:var(--cp);color:#fff;border:none;border-radius:24px;
+  padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  z-index:50;box-shadow:0 4px 16px rgba(79,70,229,.4);
+  display:none;font-family:inherit;max-width:200px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fi .2s;
+}
+
+/* RESPONSIVE PDF */
+@media(min-width:768px){
+  #pdftxt{font-size:16px;line-height:2;max-height:calc(100vh - 200px)}
+  #pdftxt h2{font-size:20px}
+  #pdftxt h3{font-size:17px}
+  #s-add .cnt{max-width:1000px;margin:0 auto}
+  #pdf-section .card{display:grid;grid-template-columns:1fr;gap:0}
+  /* Two-column when both pdf & pend visible */
+  #s-add .cnt>*{width:100%}
+}
 </style>
 </head>
 <body>
@@ -316,7 +342,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.1.0</p>
+  <p class="home-ver">v 1.2.6</p>
 </div>
 
 <!-- MAIN APP -->
@@ -346,13 +372,24 @@ body{
       <button class="btn btn-sm btn-g" id="clearpdf-btn" onclick="clearPDF()" style="display:none">重新上传</button>
     </div>
     <div class="cnt">
+      <!-- 手动录入单词/词组（始终可见） -->
+      <div class="card mb12">
+        <div class="bold f14 mb8">✏️ 手动录入单词 / 词组</div>
+        <div class="row g8">
+          <input type="text" class="inp" id="manual-word-inp"
+            placeholder="输入单词或词组（如：take off、self-esteem）" style="flex:1"
+            onkeydown="if(event.key==='Enter')addManualWord()">
+          <button class="btn btn-p" onclick="addManualWord()">添加</button>
+        </div>
+      </div>
+
       <div id="upload-zone">
         <div class="dzone" id="dzone"
              onclick="document.getElementById('pdf-input').click()"
              ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
           <div class="dico">📄</div>
           <div class="bold mb8">点击或拖拽上传 PDF</div>
-          <div class="f13 muted">支持 .pdf 格式，双击单词可添加到生词本</div>
+          <div class="f13 muted">支持 .pdf 格式；双击单词添加，或选中词组后点击弹出按钮</div>
         </div>
         <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelect(event)">
       </div>
@@ -363,53 +400,58 @@ body{
       <div id="pdf-section" class="hidden">
         <div class="card">
           <div class="rbet mb12">
-            <span class="bold f14">双击单词添加到生词本</span>
-            <span id="pdf-pages" class="f11 muted"></span>
+            <span class="bold f14">双击单词 / 选中词组添加到生词本</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="add-phrase-btn" class="btn btn-sm btn-p" onclick="addSelectedPhrase()">➕ 添加词组</button>
+              <span id="pdf-pages" class="f11 muted"></span>
+            </div>
           </div>
           <div id="pdftxt"></div>
         </div>
-        <div id="pend-box" class="card hidden">
-          <div class="rbet mb8">
-            <span class="bold f14">待添加 (<span id="pend-cnt">0</span>)</span>
-            <button class="btn btn-sm btn-g" onclick="clearPend()">清空</button>
-          </div>
-          <div id="pend-tags" class="tlist"></div>
+      </div>
 
-          <!-- 模式切换 -->
-          <div class="mtog mt12">
-            <button class="mtog-btn on" id="mode-manual-btn" onclick="setGenMode('manual')">✍️ 手动模式</button>
-            <button class="mtog-btn" id="mode-api-btn" onclick="setGenMode('api')">⚡ API 模式</button>
-          </div>
+      <!-- 待添加（移至 pdf-section 外，手动录入时也可见） -->
+      <div id="pend-box" class="card hidden">
+        <div class="rbet mb8">
+          <span class="bold f14">待添加 (<span id="pend-cnt">0</span>)</span>
+          <button class="btn btn-sm btn-g" onclick="clearPend()">清空</button>
+        </div>
+        <div id="pend-tags" class="tlist"></div>
 
-          <!-- 手动模式 UI -->
-          <div id="manual-ui" class="mt12">
-            <button class="btn btn-p btn-full" onclick="genManualPrompt()">📋 生成释义提示词</button>
-            <div id="manual-prompt-box" class="hidden">
-              <div class="divider"></div>
-              <div class="rbet mb8">
-                <span class="f13 muted">复制后粘贴到 claude.ai</span>
-                <button class="btn btn-sm btn-o" onclick="copyPrompt()">一键复制</button>
-              </div>
-              <textarea id="manual-prompt-ta" class="prompt-ta" rows="10" readonly></textarea>
-              <div class="divider"></div>
-              <div class="f13 bold mb8">将 claude.ai 返回的 JSON 粘贴到此处：</div>
-              <textarea id="manual-json-ta" class="prompt-ta" rows="7"
-                placeholder='[{"word":"abandon","chinese":"放弃","english":"...","usage":"...","example":"..."}]'></textarea>
-              <button class="btn btn-p btn-full mt8" onclick="importManualJSON()">✅ 导入释义</button>
+        <!-- 模式切换 -->
+        <div class="mtog mt12">
+          <button class="mtog-btn on" id="mode-manual-btn" onclick="setGenMode('manual')">✍️ 手动模式</button>
+          <button class="mtog-btn" id="mode-api-btn" onclick="setGenMode('api')">⚡ API 模式</button>
+        </div>
+
+        <!-- 手动模式 UI -->
+        <div id="manual-ui" class="mt12">
+          <button class="btn btn-p btn-full" onclick="genManualPrompt()">📋 生成释义提示词</button>
+          <div id="manual-prompt-box" class="hidden">
+            <div class="divider"></div>
+            <div class="rbet mb8">
+              <span class="f13 muted">复制后粘贴到 claude.ai</span>
+              <button class="btn btn-sm btn-o" onclick="copyPrompt()">一键复制</button>
             </div>
+            <textarea id="manual-prompt-ta" class="prompt-ta" rows="10" readonly></textarea>
+            <div class="divider"></div>
+            <div class="f13 bold mb8">将 claude.ai 返回的 JSON 粘贴到此处：</div>
+            <textarea id="manual-json-ta" class="prompt-ta" rows="7"
+              placeholder='[{"word":"abandon","chinese":"放弃","english":"...","usage":"...","example":"..."}]'></textarea>
+            <button class="btn btn-p btn-full mt8" onclick="importManualJSON()">✅ 导入释义</button>
           </div>
+        </div>
 
-          <!-- API 模式 UI -->
-          <div id="api-ui" class="mt12 hidden">
-            <button id="gen-btn" class="btn btn-p btn-full" onclick="batchGen()">✨ 批量生成释义</button>
-            <div id="genprog" class="genbox hidden">
-              <div class="row g8">
-                <div class="spin"></div>
-                <span id="gentxt" class="f13 muted">正在生成...</span>
-              </div>
-              <div class="genbg"><div class="genbar" id="genbar" style="width:0"></div></div>
-              <div id="genres" class="f11 muted" style="text-align:right;margin-top:4px"></div>
+        <!-- API 模式 UI -->
+        <div id="api-ui" class="mt12 hidden">
+          <button id="gen-btn" class="btn btn-p btn-full" onclick="batchGen()">✨ 批量生成释义</button>
+          <div id="genprog" class="genbox hidden">
+            <div class="row g8">
+              <div class="spin"></div>
+              <span id="gentxt" class="f13 muted">正在生成...</span>
             </div>
+            <div class="genbg"><div class="genbar" id="genbar" style="width:0"></div></div>
+            <div id="genres" class="f11 muted" style="text-align:right;margin-top:4px"></div>
           </div>
         </div>
       </div>
@@ -452,7 +494,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.1.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.2.6</div>
         </div>
       </div>
     </div>
@@ -504,7 +546,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.1.0';
+const CACHE='wr-1.2.6';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -577,6 +619,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     showMain();
   }
   // else: stay on home screen
+  setupPhraseSelect();
 });
 
 /* ═══════════════════════════════
@@ -805,7 +848,11 @@ async function loadPDF(file){
       // Merge lines into semantic blocks
       let cur=null;
       for(const line of lines){
-        const txt=line.texts.join(' ').replace(/\s+/g,' ').trim();
+        let txt=line.texts.join(' ').replace(/\s+/g,' ').trim();
+        // 修复 PDF 提取时复合词被拆分的情况，如 "well - known" → "well-known"
+        txt=txt.replace(/([a-zA-Z]) - ([a-zA-Z])/g,'$1-$2');
+        txt=txt.replace(/([a-zA-Z])- ([a-zA-Z])/g,'$1-$2');
+        txt=txt.replace(/([a-zA-Z]) -([a-zA-Z])/g,'$1-$2');
         if(!txt)continue;
         const h=line.h||medH;
         const type=h>medH*1.5?'h2':h>medH*1.2?'h3':'para';
@@ -872,7 +919,7 @@ function renderPDFText(blocks){
         const sp=document.createElement('span');
         sp.className='wt'+(inV?' inv':inP?' pend':'');
         sp.textContent=part;
-        sp.title=inV?'已在生词本':inP?'已标记':'双击添加';
+        if(inV)sp.title='已在生词本';else if(inP)sp.title='已标记';
         sp.addEventListener('dblclick',()=>addPend(part));
         el.appendChild(sp);
       }else{
@@ -884,26 +931,30 @@ function renderPDFText(blocks){
 }
 
 function addPend(word){
-  const low=word.toLowerCase().trim();
+  const low=word.trim().replace(/\s+/g,' ').toLowerCase();
   if(low.length<2)return;
   if(S.vocab.some(w=>w.word.toLowerCase()===low)){
-    toast(`"${word}" 已在生词本中`,'err');return;
+    toast(`"${word.trim()}" 已在生词本中`,'err');return;
   }
   if(S.pend.includes(low)){
-    // Toggle off
     S.pend=S.pend.filter(w=>w!==low);
     updatePendUI();
-    document.querySelectorAll('.wt').forEach(el=>{
-      if(el.textContent.toLowerCase()===low)el.className='wt';
-    });
-    toast(`已移除 "${word}"`);return;
+    // 单词才更新 PDF 高亮；词组不处理
+    if(!low.includes(' ')){
+      document.querySelectorAll('.wt').forEach(el=>{
+        if(el.textContent.toLowerCase()===low)el.className='wt';
+      });
+    }
+    toast(`已移除 "${word.trim()}"`);return;
   }
   S.pend.push(low);
   updatePendUI();
-  document.querySelectorAll('.wt').forEach(el=>{
-    if(el.textContent.toLowerCase()===low)el.className='wt pend';
-  });
-  toast(`已添加 "${word}"`,'ok');
+  if(!low.includes(' ')){
+    document.querySelectorAll('.wt').forEach(el=>{
+      if(el.textContent.toLowerCase()===low)el.className='wt pend';
+    });
+  }
+  toast(`已添加 "${word.trim()}"`,'ok');
 }
 
 function updatePendUI(){
@@ -919,9 +970,11 @@ function removePendIdx(i){
   const word=S.pend[i];
   S.pend.splice(i,1);
   updatePendUI();
-  document.querySelectorAll('.wt').forEach(el=>{
-    if(el.textContent.toLowerCase()===word)el.className='wt';
-  });
+  if(!word.includes(' ')){
+    document.querySelectorAll('.wt').forEach(el=>{
+      if(el.textContent.toLowerCase()===word)el.className='wt';
+    });
+  }
 }
 
 function clearPend(){
@@ -1029,6 +1082,33 @@ function clearPDF(){
   document.getElementById('pdftxt').innerHTML='';
   document.getElementById('clearpdf-btn').style.display='none';
   updatePendUI();
+}
+
+/* ═══════════════════════════════
+   手动录入单词/词组
+═══════════════════════════════ */
+function addManualWord(){
+  const inp=document.getElementById('manual-word-inp');
+  const word=inp.value.trim().replace(/\s+/g,' ');
+  if(!word){toast('请输入单词或词组','err');return;}
+  addPend(word);
+  inp.value='';
+  inp.focus();
+}
+
+/* ═══════════════════════════════
+   词组选中 - 标题栏按钮
+═══════════════════════════════ */
+function setupPhraseSelect(){
+  // 按钮常驻，无需事件检测
+}
+
+function addSelectedPhrase(){
+  const sel=window.getSelection();
+  const text=sel?sel.toString().replace(/\s+/g,' ').trim():'';
+  if(text.length<2){toast('请先在PDF中选中词组','err');return;}
+  addPend(text);
+  try{sel.removeAllRanges();}catch(e){}
 }
 
 async function batchGen(){
@@ -1161,7 +1241,7 @@ function renderRvSetup(){
   rc.innerHTML=`
     <div class="card fadein">
       <div class="bold f14 mb4">选择复习范围</div>
-      <div class="f13 muted mb12">每个单词2道题：看单词选中文 + 看释义选单词，四选一</div>
+      <div class="f13 muted mb12">每个单词4道题：2道四选一 + 2道拼写输入</div>
       <div class="rvf">
         ${PROFS.map((p,i)=>`
           <div class="rvo ${S.rvFilters.includes(p)?'on':''}" data-pi="${i}" onclick="toggleRvF(${i})">
@@ -1232,6 +1312,22 @@ function buildQs(toRv,allDef){
         expl:`${word.word}：${word.chineseDefinition}${word.usage?'\n用法：'+word.usage:''}`
       });
     }
+    // Q3: 中文释义 → 拼写英文
+    qs.push({
+      type:'c2w_spell',word,
+      display:word.chineseDefinition,isLong:false,
+      prompt:'根据中文释义，拼写英文单词',
+      answer:word.word,
+      expl:`${word.word}：${word.chineseDefinition}`
+    });
+    // Q4: 英文释义 → 拼写英文
+    qs.push({
+      type:'e2w_spell',word,
+      display:word.englishDefinition,isLong:true,
+      prompt:'根据英文释义，拼写英文单词',
+      answer:word.word,
+      expl:`${word.word}：${word.chineseDefinition}`
+    });
   });
   // Shuffle all questions
   for(let i=qs.length-1;i>0;i--){
@@ -1261,6 +1357,19 @@ function renderQ(){
   const prog=(ses.idx/ses.qs.length*100).toFixed(1);
   ses.answered=false;
 
+  const qtypeLabel={'w2c':'看单词 → 选中文','d2w':'看释义 → 选单词',
+    'c2w_spell':'看中文 → 拼写英文','e2w_spell':'看英文释义 → 拼写英文'}[q.type];
+  const isSpell=q.type==='c2w_spell'||q.type==='e2w_spell';
+  const answerArea=isSpell
+    ?`<div class="spell-area">
+        <input id="spell-inp" class="spell-inp" type="text"
+          placeholder="输入英文单词..." autocomplete="off" autocorrect="off"
+          spellcheck="false" onkeydown="if(event.key==='Enter')checkSpell()">
+        <button class="btn btn-p btn-full" style="margin-top:9px" onclick="checkSpell()">提交</button>
+      </div>`
+    :`<div class="opts">
+        ${q.opts.map((o,i)=>`<button class="opt" data-idx="${i}" onclick="checkAns(${i})">${esc(o)}</button>`).join('')}
+      </div>`;
   rc.innerHTML=`
     <div class="fadein">
       <div class="rvprog"><div class="rvprogfill" style="width:${prog}%"></div></div>
@@ -1268,18 +1377,17 @@ function renderQ(){
         ${ses.idx+1} / ${ses.qs.length} &nbsp;·&nbsp; ✓ ${ses.correct} &nbsp;·&nbsp; ✗ ${ses.incorrect}
       </div>
       <div class="qcard">
-        <div class="qtype">${q.type==='w2c'?'看单词 → 选中文':'看释义 → 选单词'}</div>
+        <div class="qtype">${qtypeLabel}</div>
         <div class="qdisplay ${q.isLong?'def':''}">${esc(q.display)}</div>
         <div class="qprompt">${q.prompt}</div>
-        <div class="opts">
-          ${q.opts.map((o,i)=>`<button class="opt" data-idx="${i}" onclick="checkAns(${i})">${esc(o)}</button>`).join('')}
-        </div>
+        ${answerArea}
         <div id="qfb" class="fb"></div>
       </div>
       <button id="nxt-btn" class="btn btn-p btn-full hidden" onclick="nextQ()">
         ${ses.idx+1<ses.qs.length?'下一题 →':'查看结果 →'}
       </button>
     </div>`;
+  if(isSpell)setTimeout(()=>document.getElementById('spell-inp')?.focus(),50);
 }
 
 function checkAns(si){
@@ -1302,6 +1410,29 @@ function checkAns(si){
   }else{
     fb.className='fb no';
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.opts[q.ci])}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
+  }
+  document.getElementById('nxt-btn').classList.remove('hidden');
+}
+
+function checkSpell(){
+  const ses=S.rvSess;if(ses.answered)return;
+  const inp=document.getElementById('spell-inp');
+  if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){toast('请输入单词','err');return;}
+  ses.answered=true;
+  inp.disabled=true;
+  const q=ses.qs[ses.idx];
+  const ok=val.toLowerCase()===q.answer.toLowerCase();
+  if(ok)ses.correct++;else ses.incorrect++;
+  inp.classList.add(ok?'ok':'no');
+  const fb=document.getElementById('qfb');fb.style.display='block';
+  if(ok){
+    fb.className='fb ok';
+    fb.innerHTML='✓ 正确！<br><small>'+esc(q.expl).replace(/\n/g,'<br>')+'</small>';
+  }else{
+    fb.className='fb no';
+    fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.answer)}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
   document.getElementById('nxt-btn').classList.remove('hidden');
 }
@@ -1476,5 +1607,7 @@ function esc(s){
     .replace(/'/g,'&#39;');
 }
 </script>
+<!-- Phrase select floating button -->
+<button id="sel-phrase-btn"></button>
 </body>
 </html>
