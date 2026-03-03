@@ -342,7 +342,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.2.6</p>
+  <p class="home-ver">v 1.2.7</p>
 </div>
 
 <!-- MAIN APP -->
@@ -494,7 +494,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.2.6</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.2.7</div>
         </div>
       </div>
     </div>
@@ -546,7 +546,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.2.6';
+const CACHE='wr-1.2.7';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -1285,9 +1285,12 @@ function startRv(){
 
 function buildQs(toRv,allDef){
   const qs=[];
+  const profUpdated=[];
   toRv.forEach(word=>{
+    // 进入复习：完全不会 → 掌握中
+    if(word.proficiency==='完全不会'){word.proficiency='掌握中';profUpdated.push(word);}
     // Q1: word → Chinese
-    {
+    if(getStreak(word,'w2c')<5){
       const correct=word.chineseDefinition;
       const wrongs=allDef.filter(w=>w.id!==word.id&&w.chineseDefinition)
         .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.chineseDefinition);
@@ -1300,7 +1303,7 @@ function buildQs(toRv,allDef){
       });
     }
     // Q2: English definition → word
-    {
+    if(getStreak(word,'d2w')<5){
       const correct=word.word;
       const wrongs=allDef.filter(w=>w.id!==word.id)
         .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.word);
@@ -1313,7 +1316,7 @@ function buildQs(toRv,allDef){
       });
     }
     // Q3: 中文释义 → 拼写英文
-    qs.push({
+    if(getStreak(word,'c2w_spell')<5)qs.push({
       type:'c2w_spell',word,
       display:word.chineseDefinition,isLong:false,
       prompt:'根据中文释义，拼写英文单词',
@@ -1321,7 +1324,7 @@ function buildQs(toRv,allDef){
       expl:`${word.word}：${word.chineseDefinition}`
     });
     // Q4: 英文释义 → 拼写英文
-    qs.push({
+    if(getStreak(word,'e2w_spell')<5)qs.push({
       type:'e2w_spell',word,
       display:word.englishDefinition,isLong:true,
       prompt:'根据英文释义，拼写英文单词',
@@ -1329,6 +1332,7 @@ function buildQs(toRv,allDef){
       expl:`${word.word}：${word.chineseDefinition}`
     });
   });
+  if(profUpdated.length)saveVocab();
   // Shuffle all questions
   for(let i=qs.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -1390,6 +1394,19 @@ function renderQ(){
   if(isSpell)setTimeout(()=>document.getElementById('spell-inp')?.focus(),50);
 }
 
+const RV_TYPES=['w2c','d2w','c2w_spell','e2w_spell'];
+function getStreak(word,type){return word.reviewStats?.[type]?.streak??0;}
+function updateWordStreak(word,type,isCorrect){
+  if(!word.reviewStats)word.reviewStats={};
+  if(!word.reviewStats[type])word.reviewStats[type]={streak:0};
+  word.reviewStats[type].streak=isCorrect?word.reviewStats[type].streak+1:0;
+  if(RV_TYPES.every(t=>getStreak(word,t)>=3)&&word.proficiency!=='已掌握'){
+    word.proficiency='已掌握';
+    toast(`「${word.word}」已掌握 🎉`,'ok');
+  }
+  saveVocab();
+}
+
 function checkAns(si){
   const ses=S.rvSess;if(ses.answered)return;ses.answered=true;
   const q=ses.qs[ses.idx];
@@ -1411,6 +1428,7 @@ function checkAns(si){
     fb.className='fb no';
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.opts[q.ci])}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
+  updateWordStreak(q.word,q.type,ok);
   document.getElementById('nxt-btn').classList.remove('hidden');
 }
 
@@ -1434,6 +1452,7 @@ function checkSpell(){
     fb.className='fb no';
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.answer)}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
+  updateWordStreak(q.word,q.type,ok);
   document.getElementById('nxt-btn').classList.remove('hidden');
 }
 
@@ -1538,7 +1557,8 @@ function exportJSON(){
     word:w.word,proficiency:w.proficiency,
     chineseDefinition:w.chineseDefinition,
     englishDefinition:w.englishDefinition,
-    usage:w.usage,examples:w.examples
+    usage:w.usage,examples:w.examples,
+    reviewStats:w.reviewStats??{}
   }));
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
