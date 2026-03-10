@@ -342,7 +342,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.2.7</p>
+  <p class="home-ver">v 1.3.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -494,7 +494,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.2.7</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.3.0</div>
         </div>
       </div>
     </div>
@@ -546,7 +546,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.2.7';
+const CACHE='wr-1.3.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -1517,13 +1517,19 @@ function importJSON(){
       const valid=data.filter(x=>x&&typeof x.word==='string'&&x.word.trim());
       if(!valid.length)throw new Error('没有找到有效的单词数据');
       S.importBuf=valid;
+      const existingLow=new Set(S.vocab.map(w=>w.word.toLowerCase()));
+      const willAdd=valid.filter(x=>!existingLow.has(x.word.toLowerCase())).length;
+      const willMerge=valid.length-willAdd;
       openModal(`
         <div class="mtitle">确认导入</div>
-        <p class="f13 muted mb12">即将导入 <strong>${valid.length}</strong> 个单词，与现有生词本合并（已存在的跳过）</p>
-        <div class="row g8">
+        <p class="f13 muted mb4">文件共 <strong>${valid.length}</strong> 个单词</p>
+        <p class="f13 muted mb12">新增 <strong>${willAdd}</strong> 个 · 合并更新 <strong>${willMerge}</strong> 个</p>
+        <p class="f12 muted mb12" style="background:var(--cpbg);padding:8px 10px;border-radius:8px;line-height:1.6">合并规则：熟练度取较高值；连胜取最大值；释义本地有则保留，本地空则填入</p>
+        <div class="row g8 mb8">
           <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
-          <button class="btn btn-p" style="flex:1" onclick="doImport()">确认导入</button>
-        </div>`);
+          <button class="btn btn-p" style="flex:1" onclick="doImport()">合并导入</button>
+        </div>
+        <button class="btn" style="width:100%;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA" onclick="doImportReplace()">⚠️ 覆盖全部（清空现有数据）</button>`);
     }catch(err){toast('导入失败：'+err.message,'err');}
   };
   inp.click();
@@ -1531,10 +1537,13 @@ function importJSON(){
 
 function doImport(){
   if(!S.importBuf)return;
-  let added=0;
+  const PROF_ORDER=['完全不会','掌握中','已掌握'];
+  const RTYPES=['w2c','d2w','c2w_spell','e2w_spell'];
+  let added=0,merged=0;
   S.importBuf.forEach(item=>{
     const low=item.word.toLowerCase();
-    if(!S.vocab.some(w=>w.word.toLowerCase()===low)){
+    const existing=S.vocab.find(w=>w.word.toLowerCase()===low);
+    if(!existing){
       S.vocab.push({
         id:uid(),word:item.word.trim(),
         proficiency:PROFS.includes(item.proficiency)?item.proficiency:'完全不会',
@@ -1544,11 +1553,49 @@ function doImport(){
         addedAt:item.addedAt||new Date().toISOString()
       });
       added++;
+    } else {
+      let changed=false;
+      // proficiency: take higher
+      const li=PROF_ORDER.indexOf(existing.proficiency);
+      const ii=PROF_ORDER.indexOf(item.proficiency);
+      if(ii>li){existing.proficiency=item.proficiency;changed=true;}
+      // reviewStats: take max streak per type
+      const imp=item.reviewStats||{};
+      if(!existing.reviewStats)existing.reviewStats={};
+      RTYPES.forEach(t=>{
+        const ls=existing.reviewStats[t]?.streak??0;
+        const is=imp[t]?.streak??0;
+        if(is>ls){existing.reviewStats[t]={streak:is};changed=true;}
+      });
+      // definitions: fill local empty fields from import
+      ['chineseDefinition','englishDefinition','usage','examples'].forEach(f=>{
+        if(!existing[f]&&item[f]){existing[f]=item[f];changed=true;}
+      });
+      if(changed)merged++;
     }
   });
   saveVocab();S.importBuf=null;closeModal();
   showMain();
-  toast(`成功导入 ${added} 个单词`,'ok');
+  let msg=`新增 ${added} 个`;
+  if(merged)msg+=`，合并更新 ${merged} 个`;
+  toast(msg,'ok');
+}
+
+function doImportReplace(){
+  if(!S.importBuf)return;
+  const data=S.importBuf;
+  S.vocab=data.map(item=>({
+    id:uid(),word:item.word.trim(),
+    proficiency:PROFS.includes(item.proficiency)?item.proficiency:'完全不会',
+    chineseDefinition:item.chineseDefinition||'',
+    englishDefinition:item.englishDefinition||'',
+    usage:item.usage||'',examples:item.examples||'',
+    addedAt:item.addedAt||new Date().toISOString(),
+    reviewStats:item.reviewStats||{}
+  }));
+  saveVocab();S.importBuf=null;closeModal();
+  showMain();
+  toast(`已覆盖，共 ${S.vocab.length} 个单词`,'ok');
 }
 
 function exportJSON(){
@@ -1558,7 +1605,8 @@ function exportJSON(){
     chineseDefinition:w.chineseDefinition,
     englishDefinition:w.englishDefinition,
     usage:w.usage,examples:w.examples,
-    reviewStats:w.reviewStats??{}
+    reviewStats:w.reviewStats??{},
+    addedAt:w.addedAt||''
   }));
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
