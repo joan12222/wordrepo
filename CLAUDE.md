@@ -2,7 +2,7 @@
 
 ## 已完成
 
-- **index.html**（约 1600 行）：完整 PWA 单词记忆工具，单文件实现全部功能
+- **index.html**（约 1570 行）：完整 PWA 单词记忆工具，单文件实现全部功能
   - 生词本管理：首次打开选择导入 JSON 或新建，数据存 localStorage
   - PDF 解析：pdf.js 3.11.174 本地文件，利用位置/字号信息识别标题(h2/h3)和正文段落，排版层次化渲染，双击英文单词标记/取消标记；自动清除乱码字符；多页间插入分隔线；自动检测试卷格式并对选项缩进
   - 已存在单词检测：双击已在生词本的单词提示「已存在」
@@ -23,10 +23,9 @@
     - 某题型连胜 ≥ 5：本轮跳过该题型
     - 全部 4 种题型连胜均 ≥ 3：自动升为「已掌握」
     - 答错：该题型连胜归零
-    - `reviewStats` 随 JSON 导出保留
   - 熟练度管理：筛选展示 + 多选批量修改 + 单词详情内单独修改
   - 删除功能：两个入口——①多选后批量工具栏「删除」按钮（二次确认）；②单词详情弹窗内「删除此单词」
-  - 导入/导出：JSON 格式，含全部字段
+  - 导入/导出：JSON 格式，含全部字段（含扩展字段）
   - PWA：manifest 通过 Blob URL 注入，Service Worker 通过 Blob URL 注册并缓存
 
 ## 进行中
@@ -39,25 +38,25 @@
 
 ## 下次继续的切入点
 
-- 入口文件：`index.html`（约 1600 行）
+- 入口文件：`index.html`（约 1570 行）
 - 关键函数行号（以当前文件为准）：
-  - 生词本渲染：`renderVocab()` 第 661 行
-  - 批量删除：`batchDelete()` 第 744 行，`doBatchDelete()` 第 755 行
-  - 单词详情（含删除）：`showDetail()` 第 761 行
-  - PDF 文本清洗：`cleanPDFText()` 第 807 行
-  - PDF 解析：`loadPDF()` 第 816 行，`renderPDFText()` 第 885 行
-  - 待添加列表：`addPend()` 第 933 行，`clearPDF()` 第 1078 行
-  - 模式切换：`setGenMode()` 第 990 行
-  - 手动模式提示词生成：`genManualPrompt()` 第 1001 行
-  - 手动模式 JSON 导入：`importManualJSON()` 第 1031 行
-  - 手动录入：`addManualWord()` 第 1090 行
-  - 词组选中悬浮按钮：`setupPhraseSelect()` 第 1102 行
-  - Claude API 调用：`claudeChunk()` 第 1178 行
-  - 复习题目生成：`buildQs()` 第 1286 行
-  - 连胜更新：`updateWordStreak()` 第 1399 行
-  - 四选一判题：`checkAns()` 第 1410 行
-  - 拼写题判题：`checkSpell()` 第 1435 行
-  - 数据导入/导出：`importJSON()` 第 1508 行，`exportJSON()` 第 1554 行
+  - 生词本渲染：`renderVocab()` ~661
+  - 批量删除：`batchDelete()` ~744，`doBatchDelete()` ~755
+  - 单词详情（含删除）：`showDetail()` ~761
+  - PDF 文本清洗：`cleanPDFText()` ~807
+  - PDF 解析：`loadPDF()` ~816，`renderPDFText()` ~885
+  - 待添加列表：`addPend()` ~933，`clearPDF()` ~1078
+  - 模式切换：`setGenMode()` ~990
+  - 手动模式提示词生成：`genManualPrompt()` ~1001
+  - 手动模式 JSON 导入：`importManualJSON()` ~1031
+  - 手动录入：`addManualWord()` ~1090
+  - 词组选中悬浮按钮：`setupPhraseSelect()` ~1102
+  - Claude API 调用：`claudeChunk()` ~1178
+  - 复习题目生成：`buildQs()` ~1286
+  - 连胜更新：`updateWordStreak()` ~1399
+  - 四选一判题：`checkAns()` ~1410
+  - 拼写题判题：`checkSpell()` ~1435
+  - 数据导入/导出：`importJSON()` ~1508，`exportJSON()` ~1535
 
 ## 版本管理
 
@@ -81,3 +80,33 @@
 - **手动模式 JSON 兼容**：`importManualJSON()` 同时接受 `chinese/english/example` 和 `chineseDefinition/englishDefinition/examples` 两套字段名
 - **拼写题**：`checkSpell()` 大小写不敏感比对，Enter 键可提交；`.spell-inp.ok/.no` 控制输入框颜色反馈
 - **reviewStats 结构**：`{w2c:{streak:n}, d2w:{streak:n}, c2w_spell:{streak:n}, e2w_spell:{streak:n}}`，缺失字段默认 streak=0；旧数据兼容（`?.` 可选链）
+
+## 单词数据结构
+
+```json
+{
+  "word": "run",
+  "headword": "run",
+  "phonetic": "/rʌn/",
+  "proficiency": "完全不会",
+  "chineseDefinition": "跑；运行",
+  "englishDefinition": "to move fast using your legs",
+  "usage": "v. 不及物/及物动词",
+  "morphology": "runs / ran / run / running",
+  "examples": "She runs every morning.",
+  "exampleTranslation": "她每天早晨跑步。",
+  "target": "四级核心词",
+  "priority": "1",
+  "irregular": "run / ran / run",
+  "reviewStats": {},
+  "addedAt": "2026-03-13T00:00:00.000Z"
+}
+```
+
+- `headword`：词目原形（通常与 word 相同，词形变化时可能不同）
+- `phonetic`：音标
+- `morphology`：词形变化（三单/过去式/分词/比较级等）
+- `exampleTranslation`：例句中文译文
+- `target`：学习目标/分类标签
+- `priority`：优先级（数字或文字）
+- `irregular`：不规则变化形式，仅不规则动词/名词有此字段

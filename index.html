@@ -50,6 +50,8 @@ body{
   display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:5;
 }
 .hdr-title{flex:1;font-size:17px;font-weight:700;color:var(--cp)}
+.icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 6px;color:var(--ct);line-height:1;border-radius:8px}
+.icon-btn:hover{background:var(--cb)}
 
 /* INNER SCREENS */
 .is{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
@@ -315,6 +317,39 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fi .2s;
 }
 
+/* TASK SESSION */
+.ts-prog{background:var(--cb);border-radius:99px;height:5px;margin-bottom:6px;overflow:hidden}
+.ts-progfill{background:var(--cp);height:100%;border-radius:99px;transition:width .4s}
+.ts-lbl{font-size:12px;color:var(--cm);text-align:center;margin-bottom:14px}
+/* flashcard — tap-to-reveal */
+.fc-wrap{background:var(--csurf);border-radius:16px;border:2px solid var(--cb);padding:26px 22px;cursor:pointer;transition:border-color .2s;margin-bottom:14px;animation:fi .2s}
+.fc-wrap.flipped{border-color:var(--cp);cursor:default}
+.fc-front-area{display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 0}
+.fc-word{font-size:36px;font-weight:900;color:var(--cp);word-break:break-word;line-height:1.2}
+.fc-phonetic{font-size:16px;color:var(--cm);margin-top:6px}
+.fc-pos{font-size:14px;color:var(--cm);margin-top:4px}
+.fc-hint{font-size:13px;color:var(--cm);margin-top:20px}
+.fc-zh{font-size:22px;font-weight:800;color:var(--ct);margin-bottom:6px}
+.fc-en{font-size:14px;color:var(--cm);line-height:1.6;margin-bottom:8px}
+.fc-divider{height:1px;background:var(--cb);margin:8px 0 10px}
+.fc-field{margin-bottom:8px}
+.fc-field-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--cm);margin-bottom:2px}
+.fc-field-val{font-size:14px;line-height:1.6;color:var(--ct)}
+.fc-example{font-size:14px;font-style:italic;color:var(--cm);line-height:1.6}
+.fc-example-zh{font-size:13px;color:var(--cm);margin-top:3px}
+/* task quiz */
+.tq-word{font-size:24px;font-weight:900;color:var(--cp);text-align:center;margin:14px 0 4px;word-break:break-word;line-height:1.3}
+.tq-def{font-size:14px;color:var(--ct);font-style:italic;text-align:center;margin:14px 0 4px;line-height:1.6}
+.tq-sub{font-size:12px;color:var(--cm);text-align:center;margin-bottom:12px}
+.tq-lbl{font-size:12px;color:var(--cm);margin-bottom:8px}
+/* task result */
+.tr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--cb)}
+.tr-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;flex-shrink:0}
+.tr-pass{background:#D1FAE5;color:#065F46}
+.tr-fail{background:#FEE2E2;color:#B91C1C}
+/* 已存档 badge */
+.b3{background:#F1F5F9;color:#64748B}
+
 /* RESPONSIVE PDF */
 @media(min-width:768px){
   #pdftxt{font-size:16px;line-height:2;max-height:calc(100vh - 200px)}
@@ -342,7 +377,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.3.0</p>
+  <p class="home-ver">v 1.5.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -400,8 +435,8 @@ body{
       <div id="pdf-section" class="hidden">
         <div class="card">
           <div class="rbet mb12">
-            <span class="bold f14">双击单词 / 选中词组添加到生词本</span>
-            <div style="display:flex;align-items:center;gap:8px">
+            <span class="bold f14" style="flex:1;min-width:0;margin-right:8px">双击添加单词 / 选中添加词组</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
               <button id="add-phrase-btn" class="btn btn-sm btn-p" onclick="addSelectedPhrase()">➕ 添加词组</button>
               <span id="pdf-pages" class="f11 muted"></span>
             </div>
@@ -477,6 +512,19 @@ body{
         </div>
       </div>
       <div class="mb12">
+        <span class="slbl">Gitee 云同步</span>
+        <div class="card">
+          <p class="f13 muted mb8">词库自动同步至 Gitee 私有仓库（vocab.json），多设备共用。</p>
+          <input type="text" class="inp mb8" id="gitee-owner-inp" placeholder="仓库路径，如 joan1222/ciji">
+          <input type="password" class="inp mb8" id="gitee-token-inp" placeholder="Personal Access Token">
+          <div class="row g8 mb8">
+            <button class="btn btn-p" style="flex:1" onclick="saveGiteeConf()">保存配置</button>
+            <button class="btn btn-o" style="flex:1" onclick="giteePull(true)">立即同步</button>
+          </div>
+          <div id="gitee-status" class="f12 muted"></div>
+        </div>
+      </div>
+      <div class="mb12">
         <span class="slbl">数据管理</span>
         <div class="card col g8">
           <button class="btn btn-o" onclick="importJSON()">📂 导入生词本 (JSON)</button>
@@ -494,10 +542,20 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.3.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.5.0</div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ── TASK SCREEN ── -->
+  <div id="s-task" class="is">
+    <div class="hdr">
+      <button class="icon-btn" onclick="exitTaskSession()">←</button>
+      <span class="hdr-title" id="task-hdr-title">今日任务</span>
+      <div style="width:60px"></div>
+    </div>
+    <div class="cnt" id="task-cnt"></div>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -546,7 +604,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.3.0';
+const CACHE='wr-1.5.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -575,10 +633,13 @@ self.addEventListener('fetch',e=>{
 /* ═══════════════════════════════
    CONSTANTS
 ═══════════════════════════════ */
-const PROFS=['完全不会','掌握中','已掌握'];
-const PCLS=['b0','b1','b2'];
+const PROFS=['完全不会','掌握中','已掌握','已存档'];
+const PCLS=['b0','b1','b2','b3'];
 const SK_VOCAB='wr_vocab';
 const SK_KEY='wr_apikey';
+const SK_GITEE_TOKEN='wr_gitee_token';
+const SK_GITEE_OWNER='wr_gitee_owner';  // 存 owner/repo 完整路径
+const GITEE_FILE='vocab.json';
 
 /* ═══════════════════════════════
    STATE
@@ -588,11 +649,17 @@ const S={
   pend:[],          // pending words (lowercase strings)
   apiKey:'',
   rvFilters:['完全不会'],
+  dailyCount:10,
+  giteeToken:'',
+  giteeOwner:'',  // 用户名
+  giteeRepo:'',   // 仓库名
+  giteeSha:'',    // 当前远端文件 SHA，PUT 时需要
   rvSess:null,
   sel:new Set(),    // selected word IDs
   vFilter:'all',    // vocab screen filter
   importBuf:null,   // temp import data
   genMode:'manual', // 'manual' | 'api'
+  taskSess:null,    // daily/weekly task session
 };
 
 /* ═══════════════════════════════
@@ -601,7 +668,14 @@ const S={
 function loadVocab(){
   try{return JSON.parse(localStorage.getItem(SK_VOCAB))||null;}catch{return null;}
 }
-function saveVocab(){localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));}
+let _pushTimer=null;
+function saveVocab(){
+  localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
+  if(S.giteeToken&&S.giteeOwner){
+    clearTimeout(_pushTimer);
+    _pushTimer=setTimeout(giteePush,3000);
+  }
+}
 
 /* ═══════════════════════════════
    INIT
@@ -612,11 +686,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
   S.apiKey=localStorage.getItem(SK_KEY)||'';
   document.getElementById('api-inp').value=S.apiKey;
+  S.giteeToken=localStorage.getItem(SK_GITEE_TOKEN)||'';
+  const _gr=localStorage.getItem(SK_GITEE_OWNER)||'';
+  if(_gr.includes('/')){const p=_gr.split('/');S.giteeOwner=p[0];S.giteeRepo=p[1];}
+  document.getElementById('gitee-owner-inp').value=_gr;
+  document.getElementById('gitee-token-inp').value=S.giteeToken;
 
   const saved=loadVocab();
   if(saved!==null){
     S.vocab=saved;
+    // 迁移：将非字符串字段转为字符串
+    S.vocab.forEach(w=>{
+      if(w.irregular&&typeof w.irregular!=='string')w.irregular=JSON.stringify(w.irregular);
+    });
     showMain();
+    if(S.giteeToken&&S.giteeOwner)giteePull(false);
   }
   // else: stay on home screen
   setupPhraseSelect();
@@ -649,6 +733,7 @@ function goView(v){
   if(v==='vocab')renderVocab();
   if(v==='review')renderRvSetup();
   if(v==='settings')renderStats();
+  if(v==='task'){}// rendered by caller
 }
 
 /* ═══════════════════════════════
@@ -684,7 +769,7 @@ function renderVocab(){
         </div>
         <span class="bdg ${PCLS[PROFS.indexOf(w.proficiency)]}">${w.proficiency}</span>
       </div>`).join('');
-  el.innerHTML=`<div class="chips">${filt}</div>${list}`;
+  el.innerHTML=`${renderTaskBanner()}<div class="chips">${filt}</div>${list}`;
   updateBT();
 }
 
@@ -736,7 +821,8 @@ function showBatchProf(){
 
 function batchSetP(idx){
   const p=PROFS[idx];
-  S.sel.forEach(id=>{const w=S.vocab.find(x=>x.id===id);if(w)w.proficiency=p;});
+  const now=new Date().toISOString();
+  S.sel.forEach(id=>{const w=S.vocab.find(x=>x.id===id);if(w){w.proficiency=p;w.lastModified=now;}});
   saveVocab();S.sel.clear();renderVocab();
   toast(`已更新熟练度为「${p}」`,'ok');
 }
@@ -761,14 +847,21 @@ function doBatchDelete(){
 function showDetail(id){
   const w=S.vocab.find(x=>x.id===id);if(!w)return;
   const pi=PROFS.indexOf(w.proficiency);
+  const f=(lbl,val,style='')=>val?`<div class="dfield"><div class="dlbl">${lbl}</div><div class="dval"${style?` style="${style}"`:''}>${esc(val)}</div></div>`:'';
   openModal(`
     <div class="dword">${esc(w.word)}</div>
+    ${w.phonetic?`<div class="f13 muted mb4">${esc(w.phonetic)}</div>`:''}
     <span class="bdg ${PCLS[pi]}">${w.proficiency}</span>
+    ${w.priority?`<span class="bdg" style="background:var(--cpbg);color:var(--cp);margin-left:6px">优先级 ${esc(String(w.priority))}</span>`:''}
     <div class="divider"></div>
-    <div class="dfield"><div class="dlbl">中文释义</div><div class="dval">${esc(w.chineseDefinition)||'暂无'}</div></div>
-    <div class="dfield"><div class="dlbl">英文释义</div><div class="dval">${esc(w.englishDefinition)||'暂无'}</div></div>
-    <div class="dfield"><div class="dlbl">用法说明</div><div class="dval">${esc(w.usage)||'暂无'}</div></div>
-    <div class="dfield"><div class="dlbl">例句</div><div class="dval" style="font-style:italic">${esc(w.examples)||'暂无'}</div></div>
+    ${f('中文释义',w.chineseDefinition)}
+    ${f('英文释义',w.englishDefinition)}
+    ${f('用法说明',w.usage)}
+    ${f('词形变化',w.morphology)}
+    ${w.target?f('学习目标',w.target):''}
+    ${f('例句',w.examples,'font-style:italic')}
+    ${f('例句译文',w.exampleTranslation)}
+    ${f('不规则变化',w.irregular)}
     <div class="divider"></div>
     <div class="f13 muted mb8">修改熟练度</div>
     <div class="row g8 mb12 flex-wrap">
@@ -782,7 +875,7 @@ function showDetail(id){
 
 function setWP(id,pi){
   const w=S.vocab.find(x=>x.id===id);
-  if(w){w.proficiency=PROFS[pi];saveVocab();renderVocab();}
+  if(w){w.proficiency=PROFS[pi];w.lastModified=new Date().toISOString();saveVocab();renderVocab();}
 }
 
 function delWord(id){
@@ -1001,9 +1094,17 @@ function setGenMode(mode){
 function genManualPrompt(){
   if(!S.pend.length){toast('请先标记单词','err');return;}
   const template=S.pend.map(w=>({
-    word:w,chinese:'中文释义',english:'英文释义',usage:'用法说明',example:'例句'
+    word:w,
+    phonetic:'音标（如 /ˈfruːt.fəl/）',
+    chineseDefinition:'中文释义（简洁）',
+    englishDefinition:'英文释义（一句话）',
+    usage:'用法说明（词性及搭配，中文）',
+    morphology:'词形变化（如 go/went/gone；无变化则留空）',
+    examples:'英文例句（一句）',
+    exampleTranslation:'例句中文翻译',
+    irregular:'不规则变化说明（仅不规则动词/名词填写，其余留空）'
   }));
-  const prompt=`请为以下英语单词生成释义，严格按照JSON格式返回，不要有任何其他文字：\n\n${JSON.stringify(template,null,2)}\n\n单词列表：${S.pend.join(', ')}`;
+  const prompt=`请为以下英语单词/词组生成释义，严格按照 JSON 数组格式返回，不要有任何其他文字。\n注意：word 字段必须使用单词原形（如 ran→run，cats→cat，running→run），不得使用变形。\n\n${JSON.stringify(template,null,2)}`;
   document.getElementById('manual-prompt-ta').value=prompt;
   document.getElementById('manual-prompt-box').classList.remove('hidden');
   document.getElementById('manual-json-ta').value='';
@@ -1045,18 +1146,21 @@ function importManualJSON(){
   arr.forEach(r=>{
     if(!r.word)return;
     const low=r.word.toLowerCase();
-    // Support both key styles: chinese/english/example and chineseDefinition/englishDefinition/examples
     const def={
-      chineseDefinition:r.chinese||r.chineseDefinition||'',
-      englishDefinition:r.english||r.englishDefinition||'',
+      phonetic:r.phonetic||'',
+      chineseDefinition:r.chineseDefinition||r.chinese||'',
+      englishDefinition:r.englishDefinition||r.english||'',
       usage:r.usage||'',
-      examples:r.example||r.examples||''
+      morphology:r.morphology||'',
+      examples:r.examples||r.example||'',
+      exampleTranslation:r.exampleTranslation||'',
+      ...(r.irregular?{irregular:String(r.irregular)}:{})
     };
     const existing=S.vocab.find(w=>w.word.toLowerCase()===low);
     if(existing){
       Object.assign(existing,def);updated++;
     }else if(S.pend.includes(low)){
-      S.vocab.push({id:uid(),word:r.word,proficiency:'完全不会',...def,addedAt:now});
+      S.vocab.push({id:uid(),word:r.word,proficiency:'完全不会',...def,addedAt:now,lastModified:now});
       added++;
     }
   });
@@ -1155,7 +1259,7 @@ async function batchGen(){
         id:uid(),word:r.word||low,proficiency:'完全不会',
         chineseDefinition:r.chineseDefinition||'',
         englishDefinition:r.englishDefinition||'',
-        usage:r.usage||'',examples:r.examples||'',addedAt:now
+        usage:r.usage||'',examples:r.examples||'',addedAt:now,lastModified:now
       });
     }
   });
@@ -1179,7 +1283,7 @@ async function claudeChunk(words){
   const prompt=`For the following English words, return ONLY a valid JSON array with no extra text or explanation.
 
 Each object must have exactly these keys:
-- "word": the English word (as provided)
+- "word": the base form of the word (原形，e.g. ran→run, cats→cat, running→run)
 - "chineseDefinition": concise Chinese definition (中文释义，简洁)
 - "englishDefinition": concise English definition (one sentence)
 - "usage": brief usage notes in Chinese, including part of speech (用法说明)
@@ -1253,6 +1357,11 @@ function renderRvSetup(){
           </div>`).join('')}
       </div>
       <button class="btn btn-p btn-full" onclick="startRv()">开始复习 ▶</button>
+    </div>
+    <div class="card fadein" style="margin-top:12px">
+      <div class="bold f14 mb4">🔄 单词速记模式</div>
+      <div class="f13 muted mb12">每次取10个单词反复轮看，全部手动标记「记住了」后进入测试；答错的题回到队尾，直到全部答对才结束。</div>
+      <button class="btn btn-o btn-full" onclick="startPwdSession()">开始单词速记 ▶</button>
     </div>`;
 }
 
@@ -1285,12 +1394,9 @@ function startRv(){
 
 function buildQs(toRv,allDef){
   const qs=[];
-  const profUpdated=[];
   toRv.forEach(word=>{
-    // 进入复习：完全不会 → 掌握中
-    if(word.proficiency==='完全不会'){word.proficiency='掌握中';profUpdated.push(word);}
     // Q1: word → Chinese
-    if(getStreak(word,'w2c')<5){
+    {
       const correct=word.chineseDefinition;
       const wrongs=allDef.filter(w=>w.id!==word.id&&w.chineseDefinition)
         .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.chineseDefinition);
@@ -1303,7 +1409,7 @@ function buildQs(toRv,allDef){
       });
     }
     // Q2: English definition → word
-    if(getStreak(word,'d2w')<5){
+    {
       const correct=word.word;
       const wrongs=allDef.filter(w=>w.id!==word.id)
         .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.word);
@@ -1316,7 +1422,7 @@ function buildQs(toRv,allDef){
       });
     }
     // Q3: 中文释义 → 拼写英文
-    if(getStreak(word,'c2w_spell')<5)qs.push({
+    qs.push({
       type:'c2w_spell',word,
       display:word.chineseDefinition,isLong:false,
       prompt:'根据中文释义，拼写英文单词',
@@ -1324,7 +1430,7 @@ function buildQs(toRv,allDef){
       expl:`${word.word}：${word.chineseDefinition}`
     });
     // Q4: 英文释义 → 拼写英文
-    if(getStreak(word,'e2w_spell')<5)qs.push({
+    qs.push({
       type:'e2w_spell',word,
       display:word.englishDefinition,isLong:true,
       prompt:'根据英文释义，拼写英文单词',
@@ -1332,7 +1438,6 @@ function buildQs(toRv,allDef){
       expl:`${word.word}：${word.chineseDefinition}`
     });
   });
-  if(profUpdated.length)saveVocab();
   // Shuffle all questions
   for(let i=qs.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -1394,19 +1499,6 @@ function renderQ(){
   if(isSpell)setTimeout(()=>document.getElementById('spell-inp')?.focus(),50);
 }
 
-const RV_TYPES=['w2c','d2w','c2w_spell','e2w_spell'];
-function getStreak(word,type){return word.reviewStats?.[type]?.streak??0;}
-function updateWordStreak(word,type,isCorrect){
-  if(!word.reviewStats)word.reviewStats={};
-  if(!word.reviewStats[type])word.reviewStats[type]={streak:0};
-  word.reviewStats[type].streak=isCorrect?word.reviewStats[type].streak+1:0;
-  if(RV_TYPES.every(t=>getStreak(word,t)>=3)&&word.proficiency!=='已掌握'){
-    word.proficiency='已掌握';
-    toast(`「${word.word}」已掌握 🎉`,'ok');
-  }
-  saveVocab();
-}
-
 function checkAns(si){
   const ses=S.rvSess;if(ses.answered)return;ses.answered=true;
   const q=ses.qs[ses.idx];
@@ -1428,7 +1520,6 @@ function checkAns(si){
     fb.className='fb no';
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.opts[q.ci])}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
-  updateWordStreak(q.word,q.type,ok);
   document.getElementById('nxt-btn').classList.remove('hidden');
 }
 
@@ -1452,7 +1543,6 @@ function checkSpell(){
     fb.className='fb no';
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.answer)}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
-  updateWordStreak(q.word,q.type,ok);
   document.getElementById('nxt-btn').classList.remove('hidden');
 }
 
@@ -1472,6 +1562,588 @@ function renderSumm(){
       <button class="btn btn-g btn-full" onclick="goView('vocab')">返回生词本</button>
     </div>`;
   S.rvSess=null;
+}
+
+/* ═══════════════════════════════
+   TASK SESSION (Daily / Weekly)
+═══════════════════════════════ */
+function getTodayType(){return new Date().getDay()===0?'weekly':'daily';}
+
+function getDailyWords(){
+  const sp=arr=>[...arr].sort((a,b)=>{
+    const pa=(a.priority!==''&&a.priority!=null)?Number(a.priority):999;
+    const pb=(b.priority!==''&&b.priority!=null)?Number(b.priority):999;
+    return pa-pb;
+  });
+  return [...sp(S.vocab.filter(w=>w.proficiency==='掌握中')),
+          ...sp(S.vocab.filter(w=>w.proficiency==='完全不会'))].slice(0,S.dailyCount);
+}
+function getWeeklyWords(){return S.vocab.filter(w=>w.proficiency==='已掌握');}
+
+function renderTaskBanner(){
+  if(!S.vocab.length)return'';
+  const type=getTodayType();
+  if(type==='daily'){
+    const total=S.vocab.filter(w=>w.proficiency==='掌握中'||w.proficiency==='完全不会').length;
+    const dis=!total;
+    return`<div class="card mb12"${dis?' style="opacity:.55"':''}>
+      <div class="rbet">
+        <div>
+          <div class="bold f14">📚 今日任务</div>
+          <div class="f13 muted mt4">${dis?'暂无需学习的单词':`可学 ${total} 词`}</div>
+        </div>
+        <div class="row g8" style="align-items:center">
+          <input type="number" min="1" max="99" value="${S.dailyCount}"
+            style="width:52px;padding:6px 8px;border:1.5px solid var(--cb);border-radius:8px;font-size:14px;font-weight:600;text-align:center;background:var(--cbg);color:var(--ct)"
+            oninput="S.dailyCount=Math.max(1,parseInt(this.value)||1)" ${dis?'disabled':''}>
+          <button class="btn btn-sm${dis?' btn-g':' btn-p'}" ${dis?'disabled':''} onclick="startTaskSession()">开始</button>
+        </div>
+      </div></div>`;
+  }else{
+    const words=getWeeklyWords();
+    const dis=!words.length;
+    return`<div class="card mb12"${dis?' style="opacity:.55"':''}>
+      <div class="rbet">
+        <div>
+          <div class="bold f14">📋 本周测验（周日）</div>
+          <div class="f13 muted mt4">${dis?'暂无已掌握的单词':`已掌握 ${words.length} 词待测验`}</div>
+        </div>
+        <button class="btn btn-sm${dis?' btn-g':' btn-p'}" ${dis?'disabled':''} onclick="startTaskSession()">开始</button>
+      </div></div>`;
+  }
+}
+
+function startTaskSession(){
+  const type=getTodayType();
+  if(type==='daily'){
+    const words=getDailyWords();
+    if(!words.length){toast('暂无需要学习的单词','err');return;}
+    S.taskSess={
+      type:'daily',phase:'flash',
+      flashWords:[...words],
+      queue:[...words],        // working queue; 未掌握词推回队尾循环
+      flipped:false,
+      promoted:new Set(),   // 全部词需手动标记
+      quizWords:[],quizQueue:[],lastOk:null,errorIds:new Set(),
+      allDef:S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition),
+    };
+    document.getElementById('task-hdr-title').textContent='今日任务';
+    goView('task');renderTaskFlash();
+  }else{
+    const words=getWeeklyWords();
+    if(!words.length){toast('暂无已掌握的单词','err');return;}
+    S.taskSess={
+      type:'weekly',phase:'quiz',
+      flashWords:[],flashIdx:0,flipped:false,promoted:new Set(),
+      quizWords:[...words],allDef:S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition),
+    };
+    S.taskSess.quizQueue=[...buildAllQuizQs(S.taskSess.quizWords)];
+    S.taskSess.origQCount=S.taskSess.quizQueue.length;S.taskSess.correctCount=0;
+    document.getElementById('task-hdr-title').textContent='本周测验';
+    goView('task');renderFlatQ();
+  }
+}
+
+function exitTaskSession(){
+  const ts=S.taskSess;
+  if(ts&&ts.phase!=='result'){
+    openModal(`<div class="mtitle">退出任务？</div>
+      <p class="f13 muted mb12">进度不会保存，确认退出？</p>
+      <div class="row g8">
+        <button class="btn btn-g" style="flex:1" onclick="closeModal()">继续</button>
+        <button class="btn btn-d" style="flex:1" onclick="closeModal();S.taskSess=null;goView('vocab')">退出</button>
+      </div>`);
+  }else{S.taskSess=null;goView('vocab');}
+}
+
+/* ── Flash Phase ── */
+function renderTaskFlash(){
+  const ts=S.taskSess;
+  const w=ts.queue[0];
+  const total=ts.flashWords.length;
+  const done=ts.promoted.size;
+  const pct=(done/total)*100;
+  const isUnknown=!ts.promoted.has(w.id); // 完全不会（尚未升级）
+  const ff=(lbl,val)=>val?`<div class="fc-field"><div class="fc-field-lbl">${lbl}</div><div class="fc-field-val">${esc(val)}</div></div>`:'';
+  const card=ts.flipped
+    ?`<div class="fc-wrap flipped">
+        <div class="fc-word">${esc(w.word)}</div>
+        ${w.phonetic?`<div class="fc-phonetic">${esc(w.phonetic)}</div>`:''}
+        <div class="fc-divider"></div>
+        ${w.chineseDefinition?`<div class="fc-zh">${esc(w.chineseDefinition)}</div>`:''}
+        ${w.englishDefinition?`<div class="fc-en">${esc(w.englishDefinition)}</div>`:''}
+        ${ff('用法',w.usage)}
+        ${ff('词形变化',w.morphology)}
+        ${w.examples?`<div class="fc-field"><div class="fc-field-lbl">例句</div><div class="fc-example">${esc(w.examples)}</div>${w.exampleTranslation?`<div class="fc-example-zh">${esc(w.exampleTranslation)}</div>`:''}</div>`:''}
+        ${ff('不规则变化',w.irregular)}
+      </div>`
+    :`<div class="fc-wrap" onclick="flipTaskCard()">
+        <div class="fc-front-area">
+          <div class="fc-word">${esc(w.word)}</div>
+          ${w.phonetic?`<div class="fc-phonetic">${esc(w.phonetic)}</div>`:''}
+          ${w.usage?`<div class="fc-pos">${esc(w.usage)}</div>`:''}
+          <div class="fc-hint">点击查看释义 →</div>
+        </div>
+      </div>`;
+  document.getElementById('task-cnt').innerHTML=`
+    <div class="ts-prog"><div class="ts-progfill" style="width:${pct}%"></div></div>
+    <div class="ts-lbl">已记住 ${done} / ${total} 词</div>
+    ${card}
+    ${ts.flipped?`<div class="row g8 mt4">${isUnknown
+      ?`<button class="btn btn-p" style="flex:2" onclick="taskFlashAction('promote')">记住了 → 掌握中</button>
+         <button class="btn btn-g" style="flex:1" onclick="taskFlashAction('retry')">再看一遍</button>`
+      :`<button class="btn btn-p btn-full" onclick="taskFlashAction('next')">下一个</button>`
+    }</div>`:''}`;
+}
+function flipTaskCard(){if(!S.taskSess.flipped){S.taskSess.flipped=true;renderTaskFlash();}}
+function taskFlashAction(action){
+  const ts=S.taskSess;
+  const w=ts.queue.shift(); // 取出队首
+  ts.flipped=false;
+  if(action==='retry'){
+    ts.queue.push(w); // 推回队尾
+  }else{
+    ts.promoted.add(w.id); // promote / next
+  }
+  if(ts.queue.length===0){
+    ts.quizWords=[...ts.flashWords];
+    ts.quizQueue=[...buildAllQuizQs(ts.quizWords)];
+    ts.origQCount=ts.quizQueue.length;ts.correctCount=0;ts.phase='quiz';
+    renderFlatQ();
+  }else{
+    renderTaskFlash();
+  }
+}
+
+/* ── Quiz Phase ── */
+function buildAllQuizQs(words){
+  const allDef=S.taskSess.allDef;
+  const mc=[],sp=[];
+  words.forEach(w=>{
+    if(!w.chineseDefinition||!w.englishDefinition)return;
+    // w2c
+    {const wr=allDef.filter(v=>v.id!==w.id&&v.chineseDefinition).sort(()=>Math.random()-.5).slice(0,3).map(v=>v.chineseDefinition);
+    while(wr.length<3)wr.push('—');
+    mc.push({wordId:w.id,type:'mc',isLong:false,prompt:w.word,promptSub:w.phonetic||'',
+      label:'该单词的中文释义是？',opts:[w.chineseDefinition,...wr].sort(()=>Math.random()-.5),correct:w.chineseDefinition});}
+    // d2w
+    {const wr=allDef.filter(v=>v.id!==w.id).sort(()=>Math.random()-.5).slice(0,3).map(v=>v.word);
+    while(wr.length<3)wr.push('—');
+    mc.push({wordId:w.id,type:'mc',isLong:true,prompt:w.englishDefinition,promptSub:'',
+      label:'符合该释义的单词是？',opts:[w.word,...wr].sort(()=>Math.random()-.5),correct:w.word});}
+    // c2w_spell / e2w_spell 仅 target==='produce' 的词
+    if(w.target==='produce'){
+      sp.push({wordId:w.id,type:'spell',isLong:false,prompt:w.chineseDefinition,promptSub:w.usage||'',
+        label:'根据中文释义，拼写英文单词',correct:w.word});
+      sp.push({wordId:w.id,type:'spell',isLong:true,prompt:w.englishDefinition,promptSub:'',
+        label:'根据英文释义，拼写英文单词',correct:w.word});
+    }
+  });
+  mc.sort(()=>Math.random()-.5);
+  sp.sort(()=>Math.random()-.5);
+  return [...mc,...sp];
+}
+function renderFlatQ(){
+  const ts=S.taskSess;
+  if(!ts.quizQueue.length){renderTaskResult();return;}
+  const q=ts.quizQueue[0];
+  const pct=(ts.correctCount/ts.origQCount)*100;
+  const phase=q.type==='mc'?'选择':'填空';
+  const prog=`<div class="ts-prog"><div class="ts-progfill" style="width:${pct}%"></div></div>
+    <div class="ts-lbl">已答对 ${ts.correctCount} / ${ts.origQCount} 题 · 剩余 ${ts.quizQueue.length} 题 · ${phase}题</div>`;
+  const promptHtml=q.isLong
+    ?`<div class="tq-def">${esc(q.prompt)}</div>`
+    :`<div class="tq-word">${esc(q.prompt)}</div>`;
+  if(q.type==='mc'){
+    document.getElementById('task-cnt').innerHTML=`${prog}
+      ${promptHtml}
+      ${q.promptSub?`<div class="tq-sub">${esc(q.promptSub)}</div>`:''}
+      <div class="tq-lbl">${esc(q.label)}</div>
+      <div class="opts">${q.opts.map((o,i)=>`<button class="opt" id="tqo${i}" onclick="checkFlatMC(${i})">${esc(o)}</button>`).join('')}</div>
+      <div id="tq-fb" class="fb"></div>
+      <div id="tq-next" class="hidden mt12"><button class="btn btn-p btn-full" onclick="flatNextQ()">继续</button></div>`;
+  }else{
+    document.getElementById('task-cnt').innerHTML=`${prog}
+      ${q.isLong?`<div class="tq-def">${esc(q.prompt)}</div>`:`<div class="tq-word" style="font-size:20px">${esc(q.prompt)}</div>`}
+      ${q.promptSub?`<div class="tq-sub">${esc(q.promptSub)}</div>`:''}
+      <div class="tq-lbl">${esc(q.label)}</div>
+      <input class="spell-inp" id="tq-spell" placeholder="输入英文" onkeydown="if(event.key==='Enter')checkFlatSpell()">
+      <div id="tq-fb" class="fb mt8"></div>
+      <div id="tq-next" class="hidden mt12"><button class="btn btn-p btn-full" onclick="flatNextQ()">继续</button></div>`;
+    setTimeout(()=>document.getElementById('tq-spell')?.focus(),80);
+  }
+}
+function checkFlatMC(idx){
+  const ts=S.taskSess;const q=ts.quizQueue[0];
+  const ok=q.opts[idx]===q.correct;
+  q.opts.forEach((_,i)=>{
+    const b=document.getElementById('tqo'+i);if(!b)return;
+    b.disabled=true;
+    if(q.opts[i]===q.correct)b.classList.add('ok');
+    else if(i===idx&&!ok)b.classList.add('no');
+  });
+  const fb=document.getElementById('tq-fb');
+  if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
+    fb.textContent=ok?'✓ 正确！':'✗ 错误，正确答案：'+q.correct;}
+  document.getElementById('tq-next')?.classList.remove('hidden');
+  ts.quizQueue.shift();
+  if(ok){ts.correctCount++;}
+  else{q.opts=[...q.opts].sort(()=>Math.random()-.5);ts.quizQueue.push(q);}
+}
+function checkFlatSpell(){
+  const ts=S.taskSess;const q=ts.quizQueue[0];
+  const inp=document.getElementById('tq-spell');if(!inp)return;
+  const val=inp.value.trim();if(!val){toast('请输入答案','err');return;}
+  const ok=val.toLowerCase()===q.correct.toLowerCase();
+  inp.disabled=true;inp.classList.add(ok?'ok':'no');
+  const fb=document.getElementById('tq-fb');
+  if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
+    fb.textContent=ok?'✓ 正确！':'✗ 错误，正确拼写：'+q.correct;}
+  document.getElementById('tq-next')?.classList.remove('hidden');
+  ts.quizQueue.shift();
+  if(ok){ts.correctCount++;}
+  else{ts.quizQueue.push(q);}
+}
+function flatNextQ(){renderFlatQ();}
+
+/* ── Result Phase ── */
+function renderTaskResult(){
+  const ts=S.taskSess;ts.phase='result';
+  // 能到达这里说明所有题全部答对，词全部升级
+  const nextProf=ts.type==='daily'?'已掌握':'已存档';
+  const words=S.vocab.filter(w=>ts.quizWords.some(q=>q.id===w.id));
+  const now=new Date().toISOString();
+  words.forEach(w=>{w.proficiency=nextProf;w.lastModified=now;});
+  saveVocab();
+  const wrow=w=>`<div class="tr-row">
+    <span class="f14 bold" style="flex:1;min-width:0">${esc(w.word)}</span>
+    <span class="f12 muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(w.chineseDefinition?.slice(0,24)||'')}</span>
+  </div>`;
+  document.getElementById('task-cnt').innerHTML=`
+    <div style="text-align:center;padding:24px 0 16px">
+      <div style="font-size:54px;margin-bottom:8px">🎉</div>
+      <div style="font-size:32px;font-weight:900;color:var(--cp)">${words.length} / ${words.length}</div>
+      <div class="f13 muted mt4">全部答对 → ${nextProf}</div>
+    </div>
+    ${words.length?`<div class="slbl">✓ 全部通过 (${words.length})</div>${words.map(wrow).join('')}`:''}
+    <button class="btn btn-p btn-full mt16" onclick="S.taskSess=null;goView('vocab')">返回生词本</button>`;
+}
+
+/* ═══════════════════════════════
+   PWD记忆模式
+═══════════════════════════════ */
+function startPwdSession(){
+  const allDef=S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition);
+  const pool=allDef.filter(w=>S.rvFilters.includes(w.proficiency));
+  if(!pool.length){toast('所选范围内没有有释义的单词','err');return;}
+  if(allDef.length<4){toast('至少需要4个有释义的单词','err');return;}
+  const words=[...pool].sort(()=>Math.random()-.5).slice(0,10);
+  S.taskSess={
+    type:'pwd',phase:'flash',
+    flashWords:[...words],
+    queue:[...words],
+    flipped:false,
+    mastered:new Set(),
+    allDef,
+  };
+  document.getElementById('task-hdr-title').textContent='单词速记';
+  goView('task');renderPwdFlash();
+}
+
+function renderPwdFlash(){
+  const ts=S.taskSess;
+  const w=ts.queue[0];
+  const total=ts.flashWords.length;
+  const done=ts.mastered.size;
+  const pct=(done/total)*100;
+  const ff=(lbl,val)=>val?`<div class="fc-field"><div class="fc-field-lbl">${lbl}</div><div class="fc-field-val">${esc(val)}</div></div>`:'';
+  const card=ts.flipped
+    ?`<div class="fc-wrap flipped">
+        <div class="fc-word">${esc(w.word)}</div>
+        ${w.phonetic?`<div class="fc-phonetic">${esc(w.phonetic)}</div>`:''}
+        <div class="fc-divider"></div>
+        ${w.chineseDefinition?`<div class="fc-zh">${esc(w.chineseDefinition)}</div>`:''}
+        ${w.englishDefinition?`<div class="fc-en">${esc(w.englishDefinition)}</div>`:''}
+        ${ff('用法',w.usage)}${ff('词形变化',w.morphology)}
+        ${w.examples?`<div class="fc-field"><div class="fc-field-lbl">例句</div><div class="fc-example">${esc(w.examples)}</div>${w.exampleTranslation?`<div class="fc-example-zh">${esc(w.exampleTranslation)}</div>`:''}</div>`:''}
+        ${ff('不规则变化',w.irregular)}
+      </div>`
+    :`<div class="fc-wrap" onclick="flipPwdCard()">
+        <div class="fc-front-area">
+          <div class="fc-word">${esc(w.word)}</div>
+          ${w.phonetic?`<div class="fc-phonetic">${esc(w.phonetic)}</div>`:''}
+          ${w.usage?`<div class="fc-pos">${esc(w.usage)}</div>`:''}
+          <div class="fc-hint">点击查看释义 →</div>
+        </div>
+      </div>`;
+  document.getElementById('task-cnt').innerHTML=`
+    <div class="ts-prog"><div class="ts-progfill" style="width:${pct}%"></div></div>
+    <div class="ts-lbl">已记住 ${done} / ${total} 词 · 队列还剩 ${ts.queue.length} 个</div>
+    ${card}
+    ${ts.flipped?`<div class="row g8 mt4">
+      <button class="btn btn-p" style="flex:2" onclick="pwdFlashAction('ok')">记住了 ✓</button>
+      <button class="btn btn-g" style="flex:1" onclick="pwdFlashAction('retry')">再看一遍</button>
+    </div>`:''}`;
+}
+
+function flipPwdCard(){
+  if(!S.taskSess.flipped){S.taskSess.flipped=true;renderPwdFlash();}
+}
+
+function pwdFlashAction(action){
+  const ts=S.taskSess;
+  const w=ts.queue.shift();
+  ts.flipped=false;
+  if(action==='retry'){
+    ts.queue.push(w);
+  }else{
+    ts.mastered.add(w.id);
+    if(ts.queue.length===0){
+      // 全部记住 → 进入测试阶段
+      ts.phase='quiz';
+      ts.quizQueue=buildPwdQs(ts.flashWords,ts.allDef);
+      ts.origQCount=ts.quizQueue.length;
+      ts.correctCount=0;
+      renderPwdQ();return;
+    }
+  }
+  renderPwdFlash();
+}
+
+function buildPwdQs(words,allDef){
+  const qs=[];
+  words.forEach(w=>{
+    if(!w.chineseDefinition||!w.englishDefinition)return;
+    const mkMcOpts=(correct,pool,key)=>{
+      const wr=pool.filter(v=>v.id!==w.id&&v[key]).sort(()=>Math.random()-.5).slice(0,3).map(v=>v[key]);
+      while(wr.length<3)wr.push('—');
+      return [correct,...wr].sort(()=>Math.random()-.5);
+    };
+    qs.push({wid:w.id,w,type:'mc',isLong:false,
+      prompt:w.word,sub:w.phonetic||'',label:'该单词的中文释义是？',
+      correct:w.chineseDefinition,
+      opts:mkMcOpts(w.chineseDefinition,allDef,'chineseDefinition')});
+    qs.push({wid:w.id,w,type:'mc',isLong:true,
+      prompt:w.englishDefinition,sub:'',label:'符合该释义的单词是？',
+      correct:w.word,
+      opts:mkMcOpts(w.word,allDef,'word')});
+    qs.push({wid:w.id,w,type:'spell',isLong:false,
+      prompt:w.chineseDefinition,sub:w.usage||'',label:'根据中文释义，拼写英文单词',correct:w.word});
+    qs.push({wid:w.id,w,type:'spell',isLong:true,
+      prompt:w.englishDefinition,sub:'',label:'根据英文释义，拼写英文单词',correct:w.word});
+  });
+  return qs.sort(()=>Math.random()-.5);
+}
+
+function renderPwdQ(){
+  const ts=S.taskSess;
+  if(!ts.quizQueue.length){renderPwdResult();return;}
+  const q=ts.quizQueue[0];
+  const pct=(ts.correctCount/ts.origQCount)*100;
+  const prog=`<div class="ts-prog"><div class="ts-progfill" style="width:${pct}%"></div></div>
+    <div class="ts-lbl">已答对 ${ts.correctCount} / ${ts.origQCount} 题 · 剩余 ${ts.quizQueue.length} 题</div>`;
+  if(q.type==='mc'){
+    const ph=q.isLong?`<div class="tq-def">${esc(q.prompt)}</div>`:`<div class="tq-word">${esc(q.prompt)}</div>`;
+    document.getElementById('task-cnt').innerHTML=`${prog}
+      ${ph}${q.sub?`<div class="tq-sub">${esc(q.sub)}</div>`:''}
+      <div class="tq-lbl">${esc(q.label)}</div>
+      <div class="opts">${q.opts.map((o,i)=>`<button class="opt" id="pqo${i}" onclick="checkPwdMC(${i})">${esc(o)}</button>`).join('')}</div>
+      <div id="pwd-fb" class="fb"></div>
+      <div id="pwd-next" class="hidden mt12"><button class="btn btn-p btn-full" onclick="pwdNextQ()">继续</button></div>`;
+  }else{
+    const ph=q.isLong?`<div class="tq-def">${esc(q.prompt)}</div>`:`<div class="tq-word" style="font-size:20px">${esc(q.prompt)}</div>`;
+    document.getElementById('task-cnt').innerHTML=`${prog}
+      ${ph}${q.sub?`<div class="tq-sub">${esc(q.sub)}</div>`:''}
+      <div class="tq-lbl">${esc(q.label)}</div>
+      <input class="spell-inp" id="pwd-spell" placeholder="输入英文" onkeydown="if(event.key==='Enter')checkPwdSpell()">
+      <div id="pwd-fb" class="fb mt8"></div>
+      <div id="pwd-next" class="hidden mt12"><button class="btn btn-p btn-full" onclick="pwdNextQ()">继续</button></div>`;
+    setTimeout(()=>document.getElementById('pwd-spell')?.focus(),80);
+  }
+}
+
+function checkPwdMC(idx){
+  const ts=S.taskSess;const q=ts.quizQueue[0];
+  const ok=q.opts[idx]===q.correct;
+  q.opts.forEach((_,i)=>{
+    const b=document.getElementById('pqo'+i);if(!b)return;
+    b.disabled=true;
+    if(q.opts[i]===q.correct)b.classList.add('ok');
+    else if(i===idx&&!ok)b.classList.add('no');
+  });
+  const fb=document.getElementById('pwd-fb');
+  if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
+    fb.textContent=ok?'✓ 正确！':'✗ 错误，正确答案：'+q.correct;}
+  document.getElementById('pwd-next')?.classList.remove('hidden');
+  ts.quizQueue.shift();
+  if(ok){ts.correctCount++;}
+  else{
+    // 重新打乱选项后推回队尾
+    q.opts=[...q.opts].sort(()=>Math.random()-.5);
+    ts.quizQueue.push(q);
+  }
+}
+
+function checkPwdSpell(){
+  const ts=S.taskSess;const q=ts.quizQueue[0];
+  const inp=document.getElementById('pwd-spell');if(!inp)return;
+  const val=inp.value.trim();if(!val){toast('请输入答案','err');return;}
+  const ok=val.toLowerCase()===q.correct.toLowerCase();
+  inp.disabled=true;inp.classList.add(ok?'ok':'no');
+  const fb=document.getElementById('pwd-fb');
+  if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
+    fb.textContent=ok?'✓ 正确！':'✗ 正确拼写：'+q.correct;}
+  document.getElementById('pwd-next')?.classList.remove('hidden');
+  ts.quizQueue.shift();
+  if(ok){ts.correctCount++;}
+  else{ts.quizQueue.push(q);}
+}
+
+function pwdNextQ(){renderPwdQ();}
+
+function renderPwdResult(){
+  const ts=S.taskSess;ts.phase='result';
+  document.getElementById('task-cnt').innerHTML=`
+    <div style="text-align:center;padding:24px 0 16px">
+      <div style="font-size:54px;margin-bottom:8px">🎉</div>
+      <div style="font-size:28px;font-weight:900;color:var(--cp)">全部搞定！</div>
+      <div class="f13 muted mt8">${ts.flashWords.length} 个单词 · ${ts.origQCount} 道题全部答对</div>
+    </div>
+    <div class="card" style="margin-top:8px">
+      ${ts.flashWords.map(w=>`<div class="tr-row">
+        <span class="f14 bold" style="flex:1">${esc(w.word)}</span>
+        <span class="f12 muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(w.chineseDefinition?.slice(0,24)||'')}</span>
+      </div>`).join('')}
+    </div>
+    <button class="btn btn-p btn-full mt16" onclick="S.taskSess=null;goView('review')">再来一组 ▶</button>
+    <button class="btn btn-g btn-full mt8" onclick="S.taskSess=null;goView('vocab')">返回生词本</button>`;
+}
+
+/* ═══════════════════════════════
+   GITEE 云同步
+═══════════════════════════════ */
+function saveGiteeConf(){
+  const repo=document.getElementById('gitee-owner-inp').value.trim();
+  const token=document.getElementById('gitee-token-inp').value.trim();
+  if(!repo||!token){toast('请填写仓库路径和 Token','err');return;}
+  if(!repo.includes('/')){toast('仓库路径格式应为 用户名/仓库名','err');return;}
+  const parts=repo.split('/');
+  S.giteeOwner=parts[0].trim();S.giteeRepo=parts[1].trim();S.giteeToken=token;
+  localStorage.setItem(SK_GITEE_OWNER,repo);
+  localStorage.setItem(SK_GITEE_TOKEN,token);
+  toast('Gitee 配置已保存','ok');
+  giteePull(true);
+}
+
+function setGiteeStatus(msg,type=''){
+  const el=document.getElementById('gitee-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=type==='ok'?'var(--cs)':type==='err'?'var(--ce)':'var(--cm)';
+}
+
+function mergeVocab(local,remote){
+  const map={};
+  remote.forEach(w=>{if(w.word)map[w.word.toLowerCase()]=w;});
+  local.forEach(w=>{
+    if(!w.word)return;
+    const key=w.word.toLowerCase();
+    if(!map[key]){map[key]=w;}
+    else{
+      const rm=map[key].lastModified||map[key].addedAt||'';
+      const lm=w.lastModified||w.addedAt||'';
+      if(lm>rm)map[key]=w;
+    }
+  });
+  return Object.values(map);
+}
+
+function giteeBase(){return `https://gitee.com/api/v5/repos/${encodeURIComponent(S.giteeOwner)}/${encodeURIComponent(S.giteeRepo)}/contents/${GITEE_FILE}`;}
+
+async function giteePull(showToast=true){
+  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return;
+  setGiteeStatus('同步中…');
+  try{
+    const url=`${giteeBase()}?access_token=${encodeURIComponent(S.giteeToken)}`;
+    const res=await fetch(url);
+    if(res.status===404){
+      const body=await res.text().catch(()=>'');
+      if(body.includes('Not Found')){
+        throw new Error(`仓库未找到，请确认路径是否正确\n当前路径：${S.giteeOwner}/${S.giteeRepo}`);
+      }
+      // 文件不存在，直接推送本地数据
+      setGiteeStatus('远端无数据，正在初始化…');
+      await giteePush();return;
+    }
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    if(Array.isArray(json)||!json.content){
+      // 文件不存在（Gitee 返回空数组或无 content）
+      clearTimeout(_pushTimer);
+      setGiteeStatus('远端无数据，正在初始化…');
+      await giteePush();return;
+    }
+    S.giteeSha=json.sha;
+    const remote=JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))));
+    if(!Array.isArray(remote))throw new Error('远端数据格式错误');
+    S.vocab=mergeVocab(S.vocab,remote);
+    localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
+    renderVocab();
+    const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    setGiteeStatus(`上次同步 ${t}`,'ok');
+    if(showToast)toast('同步成功','ok');
+  }catch(err){
+    setGiteeStatus('同步失败：'+err.message,'err');
+    if(showToast)toast('同步失败：'+err.message,'err');
+  }
+}
+
+async function giteePush(){
+  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return;
+  try{
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(S.vocab,null,2))));
+    const tk=encodeURIComponent(S.giteeToken);
+    const base=giteeBase();
+    // 若无 SHA，先尝试获取（文件可能已存在）
+    if(!S.giteeSha){
+      const r=await fetch(`${base}?access_token=${tk}`);
+      if(r.ok){const j=await r.json();S.giteeSha=j.sha;}
+    }
+    // 有 SHA → PUT 更新；无 SHA → POST 新建
+    const method=S.giteeSha?'PUT':'POST';
+    const body={message:'sync vocab',content,branch:'master'};
+    if(S.giteeSha)body.sha=S.giteeSha;
+    const res=await fetch(`${base}?access_token=${tk}`,{
+      method,headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok){
+      const detail=await res.text().catch(()=>'');
+      // 文件已存在（并发 POST）→ 重新获取 SHA 改用 PUT
+      if(res.status===400&&detail.includes('already exists')){
+        const r2=await fetch(`${base}?access_token=${tk}`);
+        if(r2.ok){const j=await r2.json();if(j&&!Array.isArray(j))S.giteeSha=j.sha;}
+        if(S.giteeSha){
+          const res2=await fetch(`${base}?access_token=${tk}`,{
+            method:'PUT',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({message:'sync vocab',content,branch:'master',sha:S.giteeSha})
+          });
+          if(res2.ok){const j2=await res2.json();S.giteeSha=j2.content?.sha||S.giteeSha;}
+          else throw new Error('PUT retry failed: HTTP '+res2.status);
+        }else throw new Error('无法获取 SHA 进行重试');
+      }else{
+        throw new Error(`HTTP ${res.status} ${detail.slice(0,120)}`);
+      }
+    }else{
+      const json=await res.json();
+      S.giteeSha=json.content?.sha||S.giteeSha;
+    }
+    const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    setGiteeStatus(`上次同步 ${t}`,'ok');
+  }catch(err){
+    setGiteeStatus('推送失败：'+err.message,'err');
+    console.error('giteePush',err);
+  }
 }
 
 /* ═══════════════════════════════
@@ -1517,19 +2189,13 @@ function importJSON(){
       const valid=data.filter(x=>x&&typeof x.word==='string'&&x.word.trim());
       if(!valid.length)throw new Error('没有找到有效的单词数据');
       S.importBuf=valid;
-      const existingLow=new Set(S.vocab.map(w=>w.word.toLowerCase()));
-      const willAdd=valid.filter(x=>!existingLow.has(x.word.toLowerCase())).length;
-      const willMerge=valid.length-willAdd;
       openModal(`
         <div class="mtitle">确认导入</div>
-        <p class="f13 muted mb4">文件共 <strong>${valid.length}</strong> 个单词</p>
-        <p class="f13 muted mb12">新增 <strong>${willAdd}</strong> 个 · 合并更新 <strong>${willMerge}</strong> 个</p>
-        <p class="f12 muted mb12" style="background:var(--cpbg);padding:8px 10px;border-radius:8px;line-height:1.6">合并规则：熟练度取较高值；连胜取最大值；释义本地有则保留，本地空则填入</p>
-        <div class="row g8 mb8">
+        <p class="f13 muted mb12">即将导入 <strong>${valid.length}</strong> 个单词，与现有生词本合并（已存在的跳过）</p>
+        <div class="row g8">
           <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
-          <button class="btn btn-p" style="flex:1" onclick="doImport()">合并导入</button>
-        </div>
-        <button class="btn" style="width:100%;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA" onclick="doImportReplace()">⚠️ 覆盖全部（清空现有数据）</button>`);
+          <button class="btn btn-p" style="flex:1" onclick="doImport()">确认导入</button>
+        </div>`);
     }catch(err){toast('导入失败：'+err.message,'err');}
   };
   inp.click();
@@ -1537,76 +2203,52 @@ function importJSON(){
 
 function doImport(){
   if(!S.importBuf)return;
-  const PROF_ORDER=['完全不会','掌握中','已掌握'];
-  const RTYPES=['w2c','d2w','c2w_spell','e2w_spell'];
-  let added=0,merged=0;
+  let added=0;
   S.importBuf.forEach(item=>{
     const low=item.word.toLowerCase();
-    const existing=S.vocab.find(w=>w.word.toLowerCase()===low);
-    if(!existing){
+    if(!S.vocab.some(w=>w.word.toLowerCase()===low)){
       S.vocab.push({
         id:uid(),word:item.word.trim(),
         proficiency:PROFS.includes(item.proficiency)?item.proficiency:'完全不会',
+        phonetic:item.phonetic||'',
         chineseDefinition:item.chineseDefinition||'',
         englishDefinition:item.englishDefinition||'',
-        usage:item.usage||'',examples:item.examples||'',
-        addedAt:item.addedAt||new Date().toISOString()
+        usage:item.usage||'',
+        morphology:item.morphology||'',
+        examples:item.examples||'',
+        exampleTranslation:item.exampleTranslation||'',
+        target:item.target||'',
+        priority:item.priority||'',
+        irregular:item.irregular?String(item.irregular):'',
+        addedAt:item.addedAt||new Date().toISOString(),
+        lastModified:item.lastModified||item.addedAt||new Date().toISOString()
       });
       added++;
-    } else {
-      let changed=false;
-      // proficiency: take higher
-      const li=PROF_ORDER.indexOf(existing.proficiency);
-      const ii=PROF_ORDER.indexOf(item.proficiency);
-      if(ii>li){existing.proficiency=item.proficiency;changed=true;}
-      // reviewStats: take max streak per type
-      const imp=item.reviewStats||{};
-      if(!existing.reviewStats)existing.reviewStats={};
-      RTYPES.forEach(t=>{
-        const ls=existing.reviewStats[t]?.streak??0;
-        const is=imp[t]?.streak??0;
-        if(is>ls){existing.reviewStats[t]={streak:is};changed=true;}
-      });
-      // definitions: fill local empty fields from import
-      ['chineseDefinition','englishDefinition','usage','examples'].forEach(f=>{
-        if(!existing[f]&&item[f]){existing[f]=item[f];changed=true;}
-      });
-      if(changed)merged++;
     }
   });
   saveVocab();S.importBuf=null;closeModal();
   showMain();
-  let msg=`新增 ${added} 个`;
-  if(merged)msg+=`，合并更新 ${merged} 个`;
-  toast(msg,'ok');
-}
-
-function doImportReplace(){
-  if(!S.importBuf)return;
-  const data=S.importBuf;
-  S.vocab=data.map(item=>({
-    id:uid(),word:item.word.trim(),
-    proficiency:PROFS.includes(item.proficiency)?item.proficiency:'完全不会',
-    chineseDefinition:item.chineseDefinition||'',
-    englishDefinition:item.englishDefinition||'',
-    usage:item.usage||'',examples:item.examples||'',
-    addedAt:item.addedAt||new Date().toISOString(),
-    reviewStats:item.reviewStats||{}
-  }));
-  saveVocab();S.importBuf=null;closeModal();
-  showMain();
-  toast(`已覆盖，共 ${S.vocab.length} 个单词`,'ok');
+  toast(`成功导入 ${added} 个单词`,'ok');
 }
 
 function exportJSON(){
   if(!S.vocab.length){toast('生词本为空','err');return;}
   const data=S.vocab.map(w=>({
-    word:w.word,proficiency:w.proficiency,
-    chineseDefinition:w.chineseDefinition,
-    englishDefinition:w.englishDefinition,
-    usage:w.usage,examples:w.examples,
+    word:w.word,
+    phonetic:w.phonetic||'',
+    proficiency:w.proficiency,
+    chineseDefinition:w.chineseDefinition||'',
+    englishDefinition:w.englishDefinition||'',
+    usage:w.usage||'',
+    morphology:w.morphology||'',
+    examples:w.examples||'',
+    exampleTranslation:w.exampleTranslation||'',
+    target:w.target||'',
+    priority:w.priority||'',
+    ...(w.irregular?{irregular:w.irregular}:{}),
     reviewStats:w.reviewStats??{},
-    addedAt:w.addedAt||''
+    addedAt:w.addedAt||'',
+    lastModified:w.lastModified||w.addedAt||'',
   }));
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
