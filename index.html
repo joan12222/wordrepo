@@ -377,7 +377,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.5.0</p>
+  <p class="home-ver">v 1.5.3</p>
 </div>
 
 <!-- MAIN APP -->
@@ -542,7 +542,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.5.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.5.3</div>
         </div>
       </div>
     </div>
@@ -604,7 +604,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.5.0';
+const CACHE='wr-1.5.3';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -857,7 +857,7 @@ function showDetail(id){
     ${f('中文释义',w.chineseDefinition)}
     ${f('英文释义',w.englishDefinition)}
     ${f('用法说明',w.usage)}
-    ${f('词形变化',w.morphology)}
+    ${f('词根词缀',w.morphology)}
     ${w.target?f('学习目标',w.target):''}
     ${f('例句',w.examples,'font-style:italic')}
     ${f('例句译文',w.exampleTranslation)}
@@ -1099,12 +1099,14 @@ function genManualPrompt(){
     chineseDefinition:'中文释义（简洁）',
     englishDefinition:'英文释义（一句话）',
     usage:'用法说明（词性及搭配，中文）',
-    morphology:'词形变化（如 go/went/gone；无变化则留空）',
+    morphology:'词根词缀分析（如 un-+happy，re-+write；无明显词根则留空）',
     examples:'英文例句（一句）',
     exampleTranslation:'例句中文翻译',
-    irregular:'不规则变化说明（仅不规则动词/名词填写，其余留空）'
+    irregular:'不规则变化说明（仅不规则动词/名词填写，其余留空）',
+    target:'produce（要求主动输出，能拼写、能造句）或 recognize（只需被动识别，看到能理解即可）',
+    priority:'1（高频必掌握）、2（常用）、3（低频）'
   }));
-  const prompt=`请为以下英语单词/词组生成释义，严格按照 JSON 数组格式返回，不要有任何其他文字。\n注意：word 字段必须使用单词原形（如 ran→run，cats→cat，running→run），不得使用变形。\n\n${JSON.stringify(template,null,2)}`;
+  const prompt=`请为以下英语单词/词组生成释义，严格按照 JSON 数组格式返回，不要有任何其他文字。\n注意：word 字段如果是名词或动词，必须使用单词原形（复数变单数，现在分词/过去式/过去分词还原为动词原形），不得使用变形。\n\n${JSON.stringify(template,null,2)}`;
   document.getElementById('manual-prompt-ta').value=prompt;
   document.getElementById('manual-prompt-box').classList.remove('hidden');
   document.getElementById('manual-json-ta').value='';
@@ -1154,20 +1156,20 @@ function importManualJSON(){
       morphology:r.morphology||'',
       examples:r.examples||r.example||'',
       exampleTranslation:r.exampleTranslation||'',
-      ...(r.irregular?{irregular:String(r.irregular)}:{})
+      ...(r.irregular?{irregular:String(r.irregular)}:{}),
+      ...(r.target?{target:String(r.target)}:{}),
+      ...(r.priority!=null&&r.priority!==''?{priority:String(r.priority)}:{})
     };
     const existing=S.vocab.find(w=>w.word.toLowerCase()===low);
     if(existing){
-      Object.assign(existing,def);updated++;
-    }else if(S.pend.includes(low)){
+      Object.assign(existing,def,{lastModified:now});updated++;
+    }else{
       S.vocab.push({id:uid(),word:r.word,proficiency:'完全不会',...def,addedAt:now,lastModified:now});
       added++;
     }
   });
   saveVocab();
-  // Clear imported words from pending
-  const imported=arr.map(r=>(r.word||'').toLowerCase()).filter(Boolean);
-  S.pend=S.pend.filter(w=>!imported.includes(w));
+  S.pend=[];
   updatePendUI();
   // Re-highlight PDF text
   document.querySelectorAll('.wt').forEach(el=>{
@@ -1673,7 +1675,7 @@ function renderTaskFlash(){
         ${w.chineseDefinition?`<div class="fc-zh">${esc(w.chineseDefinition)}</div>`:''}
         ${w.englishDefinition?`<div class="fc-en">${esc(w.englishDefinition)}</div>`:''}
         ${ff('用法',w.usage)}
-        ${ff('词形变化',w.morphology)}
+        ${ff('词根词缀',w.morphology)}
         ${w.examples?`<div class="fc-field"><div class="fc-field-lbl">例句</div><div class="fc-example">${esc(w.examples)}</div>${w.exampleTranslation?`<div class="fc-example-zh">${esc(w.exampleTranslation)}</div>`:''}</div>`:''}
         ${ff('不规则变化',w.irregular)}
       </div>`
@@ -1864,7 +1866,7 @@ function renderPwdFlash(){
         <div class="fc-divider"></div>
         ${w.chineseDefinition?`<div class="fc-zh">${esc(w.chineseDefinition)}</div>`:''}
         ${w.englishDefinition?`<div class="fc-en">${esc(w.englishDefinition)}</div>`:''}
-        ${ff('用法',w.usage)}${ff('词形变化',w.morphology)}
+        ${ff('用法',w.usage)}${ff('词根词缀',w.morphology)}
         ${w.examples?`<div class="fc-field"><div class="fc-field-lbl">例句</div><div class="fc-example">${esc(w.examples)}</div>${w.exampleTranslation?`<div class="fc-example-zh">${esc(w.exampleTranslation)}</div>`:''}</div>`:''}
         ${ff('不规则变化',w.irregular)}
       </div>`
