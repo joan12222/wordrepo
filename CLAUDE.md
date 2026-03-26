@@ -2,9 +2,10 @@
 
 ## 已完成
 
-- **index.html**（约 1570 行）：完整 PWA 单词记忆工具，单文件实现全部功能
+- **index.html**（约 1250 行）：完整 PWA 单词记忆工具，单文件实现全部功能
   - 生词本管理：首次打开选择导入 JSON 或新建，数据存 localStorage
   - PDF 解析：pdf.js 3.11.174 本地文件，利用位置/字号信息识别标题(h2/h3)和正文段落，排版层次化渲染，双击英文单词标记/取消标记；自动清除乱码字符；多页间插入分隔线；自动检测试卷格式并对选项缩进
+  - Word 解析：JSZip 直接读取 .docx 内部 XML（word/document.xml），解析 `w:u` 下划线属性保留下划线空格（填空横线），支持 .doc/.docx 格式；mammoth HTML 转换后处理bold-only段落缺失问题
   - 已存在单词检测：双击已在生词本的单词提示「已存在」
   - 手动录入：屏顶部始终显示输入框，Enter 提交，支持词组（含空格）
   - 词组选中：PDF 内选中文字后出现悬浮按钮可添加词组（mouseup/touchend 触发）
@@ -38,29 +39,30 @@
 
 ## 下次继续的切入点
 
-- 入口文件：`index.html`（约 1570 行）
+- 入口文件：`index.html`（约 1250 行）
 - 关键函数行号（以当前文件为准）：
   - 生词本渲染：`renderVocab()` ~661
-  - 批量删除：`batchDelete()` ~744，`doBatchDelete()` ~755
-  - 单词详情（含删除）：`showDetail()` ~761
-  - PDF 文本清洗：`cleanPDFText()` ~807
-  - PDF 解析：`loadPDF()` ~816，`renderPDFText()` ~885
-  - 待添加列表：`addPend()` ~933，`clearPDF()` ~1078
-  - 模式切换：`setGenMode()` ~990
-  - 手动模式提示词生成：`genManualPrompt()` ~1001
-  - 手动模式 JSON 导入：`importManualJSON()` ~1031
-  - 手动录入：`addManualWord()` ~1090
-  - 词组选中悬浮按钮：`setupPhraseSelect()` ~1102
-  - Claude API 调用：`claudeChunk()` ~1178
-  - 复习题目生成：`buildQs()` ~1286
-  - 连胜更新：`updateWordStreak()` ~1399
-  - 四选一判题：`checkAns()` ~1410
-  - 拼写题判题：`checkSpell()` ~1435
-  - 数据导入/导出：`importJSON()` ~1508，`exportJSON()` ~1535
+  - 批量删除：`batchDelete()` / `doBatchDelete()`
+  - 单词详情（含删除）：`showDetail()`
+  - PDF 文本清洗：`cleanPDFText()`
+  - PDF 解析：`loadPDF()`，`renderPDFText()`
+  - Word 解析：`loadDocx()`，`parseDocxXml()`，`parseDocxHtml()`
+  - 待添加列表：`addPend()`，`clearPDF()`
+  - 模式切换：`setGenMode()`
+  - 手动模式提示词生成：`genManualPrompt()`
+  - 手动模式 JSON 导入：`importManualJSON()`
+  - 手动录入：`addManualWord()`
+  - 词组选中悬浮按钮：`setupPhraseSelect()`
+  - Claude API 调用：`claudeChunk()`
+  - 复习题目生成：`buildQs()`
+  - 连胜更新：`updateWordStreak()`
+  - 四选一判题：`checkAns()`
+  - 拼写题判题：`checkSpell()`
+  - 数据导入/导出：`importJSON()`，`exportJSON()`
 
 ## 版本管理
 
-- **当前版本**：v1.2.7
+- **当前版本**：v1.6.0
 - **版本规则**：每次修改代码后必须同步更新版本号，共三处：
   1. 首页 `<p class="home-ver">v x.x.x</p>`
   2. 设置页「关于」卡片内的版本 badge

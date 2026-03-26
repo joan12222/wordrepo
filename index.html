@@ -377,7 +377,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.5.3</p>
+  <p class="home-ver">v 1.6.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -423,14 +423,14 @@ body{
              onclick="document.getElementById('pdf-input').click()"
              ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
           <div class="dico">📄</div>
-          <div class="bold mb8">点击或拖拽上传 PDF</div>
-          <div class="f13 muted">支持 .pdf 格式；双击单词添加，或选中词组后点击弹出按钮</div>
+          <div class="bold mb8">点击或拖拽上传 PDF / Word</div>
+          <div class="f13 muted">支持 .pdf / .docx 格式；双击单词添加，或选中词组后点击弹出按钮</div>
         </div>
-        <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelect(event)">
+        <input type="file" id="pdf-input" accept=".pdf,.doc,.docx" style="display:none" onchange="onFileSelect(event)">
       </div>
       <div id="pdf-loading" class="hidden" style="text-align:center;padding:40px">
         <div class="spin" style="margin:0 auto 12px"></div>
-        <div class="muted">正在解析 PDF...</div>
+        <div class="muted">正在解析文档...</div>
       </div>
       <div id="pdf-section" class="hidden">
         <div class="card">
@@ -542,7 +542,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.5.3</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.6.0</div>
         </div>
       </div>
     </div>
@@ -582,6 +582,8 @@ body{
 </div><!-- /app -->
 
 <script src="./pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1/mammoth.browser.min.js"></script>
 <script>
 'use strict';
 
@@ -604,7 +606,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.5.3';
+const CACHE='wr-1.6.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -892,10 +894,21 @@ function onDragLeave(){document.getElementById('dzone').classList.remove('drag')
 function onDrop(e){
   e.preventDefault();document.getElementById('dzone').classList.remove('drag');
   const f=e.dataTransfer.files[0];
-  if(f&&f.type==='application/pdf')loadPDF(f);
-  else toast('请上传 PDF 文件','err');
+  if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='pdf'||f.type==='application/pdf'){loadPDF(f);return;}
+  if(ext==='docx'||ext==='doc'){loadDocx(f);return;}
+  toast('请上传 PDF 或 Word 文件','err');
 }
-function onFileSelect(e){const f=e.target.files[0];if(f)loadPDF(f);e.target.value='';}
+function onFileSelect(e){
+  const f=e.target.files[0];
+  if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='pdf'||f.type==='application/pdf'){loadPDF(f);e.target.value='';return;}
+  if(ext==='docx'||ext==='doc'){loadDocx(f);e.target.value='';return;}
+  toast('请上传 PDF 或 Word 文件','err');
+  e.target.value='';
+}
 
 function cleanPDFText(s){
   return s
@@ -904,6 +917,259 @@ function cleanPDFText(s){
     .replace(/\xAD/g,'')                                // soft hyphen
     .replace(/[\u200B-\u200D\uFEFF]/g,'')               // zero-width chars
     .replace(/\s+/g,' ').trim();
+}
+
+async function loadDocx(file){
+  document.getElementById('upload-zone').classList.add('hidden');
+  document.getElementById('pdf-loading').classList.remove('hidden');
+  document.getElementById('pdf-loading').querySelector('.muted').textContent='正在解析 Word...';
+  try{
+    const buf=await file.arrayBuffer();
+    const zip=new JSZip();
+    await zip.loadAsync(buf);
+    const xml=await zip.file('word/document.xml').async('string');
+    const html=parseDocxXml(xml);
+    const blocks=parseDocxHtml(html);
+    document.getElementById('pdf-pages').textContent='';
+    renderPDFText(blocks);
+    document.getElementById('pdf-loading').classList.add('hidden');
+    document.getElementById('pdf-section').classList.remove('hidden');
+    document.getElementById('clearpdf-btn').style.display='';
+  }catch(err){
+    document.getElementById('pdf-loading').classList.add('hidden');
+    document.getElementById('upload-zone').classList.remove('hidden');
+    toast('Word解析失败: '+err.message,'err');
+  }
+}
+
+// 直接解析 docx 内部 XML，保留下划线等信息
+function parseDocxXml(xml){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(xml,'text/xml');
+  const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const parts=[];
+
+  function hasEl(parent,tag){
+    return parent.getElementsByTagNameNS(ns,tag).length>0;
+  }
+  function getEl(parent,tag){
+    return parent.getElementsByTagNameNS(ns,tag)[0];
+  }
+
+  function processRun(r){
+    const rPr=r.getElementsByTagNameNS(ns,'rPr')[0];
+    const texts=r.getElementsByTagNameNS(ns,'t');
+    const hasUnderline=rPr&&hasEl(rPr,'u');
+    const hasBold=rPr&&(hasEl(rPr,'b')||hasEl(rPr,'bCs'));
+    const hasItalic=rPr&&(hasEl(rPr,'i')||hasEl(rPr,'iCs'));
+
+    let segs=[];
+    for(const t of texts){
+      const val=(t.textContent||'').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,'');
+      if(!val)continue;
+      // 下划线空格 → 填空横线
+      if(hasUnderline&&/^[\s\xa0]+$/.test(val)){
+        segs.push({text:'_'.repeat(Math.min(val.replace(/\xa0/g,' ').length,12)),isBold:false,isItalic:false});
+      }else{
+        segs.push({text:val,isBold:hasBold,isItalic:hasItalic});
+      }
+    }
+    return segs;
+  }
+
+  function processParagraph(p){
+    const runs=p.getElementsByTagNameNS(ns,'r');
+    const segs=[];
+    for(const r of runs){
+      processRun(r).forEach(s=>segs.push(s));
+    }
+    // 处理 w:tab
+    const tabs=p.getElementsByTagNameNS(ns,'tab');
+    for(const tab of tabs){
+      segs.push({text:'\t',isBold:false,isItalic:false});
+    }
+    return segs;
+  }
+
+  const body=doc.getElementsByTagNameNS(ns,'body')[0];
+  if(!body)return'';
+
+  const paras=body.children;
+  for(const child of paras){
+    const tag=child.nodeName.split(':').pop();
+    if(tag==='tbl'){
+      const rows=child.getElementsByTagNameNS(ns,'tr');
+      for(const row of rows){
+        const cells=row.getElementsByTagNameNS(ns,'tc');
+        for(const cell of cells){
+          const pElems=cell.getElementsByTagNameNS(ns,'p');
+          for(const p of pElems){
+            const segs=processParagraph(p);
+            if(segs.length)parts.push({type:'para',segs});
+          }
+        }
+      }
+    }else if(tag==='p'){
+      const segs=processParagraph(child);
+      if(segs.length)parts.push({type:'para',segs});
+    }
+  }
+
+  // 将 segs 转换为 HTML
+  function segsToHtml(segs){
+    return segs.map(s=>{
+      let html='';
+      if(s.isBold)html+='<strong>';
+      if(s.isItalic)html+='<em>';
+      html+=esc(s.text);
+      if(s.isItalic)html+='</em>';
+      if(s.isBold)html+='</strong>';
+      return html;
+    }).join('');
+  }
+
+  // 构建 HTML，段落间加 <br> 防止合并
+  let html='';
+  for(let i=0;i<parts.length;i++){
+    if(parts[i].type==='para'){
+      const content=segsToHtml(parts[i].segs);
+      html+=`<p>${content||' '}</p>`;
+      if(i<parts.length-1)html+='<br>';
+    }
+  }
+  return html;
+}
+
+// parseDocxHtml：复用现有逻辑处理 parseDocxXml 输出的 HTML
+function parseDocxHtml(html){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(html,'text/html');
+  const blocks=[];
+  let cur=null;
+
+  function fixCompound(s){
+    return s.replace(/([a-zA-Z]) - ([a-zA-Z])/g,'$1-$2')
+             .replace(/([a-zA-Z])- ([a-zA-Z])/g,'$1-$2')
+             .replace(/([a-zA-Z]) -([a-zA-Z])/g,'$1-$2');
+  }
+
+  // 递归处理内联节点
+  function walkInline(el){
+    const results=[];
+    for(const node of el.childNodes){
+      const tag=node.nodeName.toLowerCase();
+      if(tag==='#text'){
+        const t=(node.textContent||'').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,'')
+          .replace(/[\u200B-\u200D\uFEFF]/g,'');
+        if(t)results.push({text:fixCompound(t),type:'normal'});
+      }else if(tag==='span'||tag==='em'||tag==='i'||tag==='strong'||tag==='b'||tag==='u'){
+        const style=(node.getAttribute('style')||'').toLowerCase();
+        const isBold=tag==='strong'||tag==='b'||style.includes('bold')||style.includes('700');
+        const isItalic=tag==='em'||tag==='i'||style.includes('italic')||style.includes('oblique');
+        const subs=walkInline(node);
+        if(!subs.length)continue;
+        const combined=subs.map(s=>s.text).join('');
+        if(isBold){ results.push({text:combined,type:'bold'}); }
+        else if(isItalic){ results.push({text:combined,type:'italic'}); }
+        else { subs.forEach(s=>results.push(s)); }
+      }else if(tag==='br'){
+        if(cur&&cur.type==='para'){
+          cur={type:'sep',texts:['\n'],h:0,indent:0,lastY:0};
+          blocks.push(cur);
+          cur=null;
+        }
+      }
+    }
+    return results;
+  }
+
+  function processBlock(el,defH=12){
+    const tag=el.nodeName.toLowerCase();
+    const style=el.getAttribute('style')||'';
+    const mlMatch=style.match(/margin-left:\s*([0-9.]+)(pt|px|em|cm|in)/);
+    const indent=mlMatch?mlMatch[1]+mlMatch[2]:'';
+
+    if(['h1','h2','h3','h4','h5','h6'].includes(tag)){
+      const parts=walkInline(el);
+      const txt=parts.map(p=>p.text).join('').trim();
+      if(!txt)return null;
+      const type=tag==='h1'?'h2':'h3';
+      const h=tag==='h1'?18:14;
+      return {type,texts:[txt],h,indent};
+    }
+
+    if(tag==='li'){
+      const parts=walkInline(el);
+      const txt=parts.map(p=>p.text).join('').trim();
+      if(!txt)return null;
+      const indentPx=mlMatch?(parseFloat(mlMatch[1])*(mlMatch[2]==='em'?16:1)):0;
+      const type=indentPx>30?'exam-opt':'exam-q';
+      return {type,texts:[fixCompound(txt)],h:defH,indent};
+    }
+
+    if(tag==='p'||tag==='div'){
+      const parts=walkInline(el);
+      if(!parts.length)return null;
+      const wordParts=[], phoneticParts=[], bodyParts=[];
+      for(const p of parts){
+        if(p.type==='bold'){ wordParts.push(p.text); }
+        else if(p.type==='italic'){ phoneticParts.push(p.text); }
+        else{ bodyParts.push(p.text); }
+      }
+      const word=wordParts.join('').trim();
+      const phonetic=phoneticParts.join('').trim();
+      const body=bodyParts.join('').trim();
+      const isVocabWord=word&&/^[a-zA-Z\-' ]+$/.test(word)&&word.length<=30&&!word.includes(':');
+
+      if(!isVocabWord&&/^[A-D][.、．]/.test(parts.map(p=>p.text).join('').trim()))
+        return{type:'exam-opt',texts:[fixCompound(parts.map(p=>p.text).join('').trim())],h:defH,indent};
+
+      if(isVocabWord){
+        const subBlocks=[];
+        subBlocks.push({type:'h2',texts:[word],h:18,indent,lastY:0});
+        if(phonetic)subBlocks.push({type:'h3',texts:[phonetic],h:12,indent,lastY:0,isItalic:true});
+        if(body)subBlocks.push({type:'para',texts:[body],h:12,indent,lastY:0,isPlain:true});
+        return{subBlocks};
+      }
+      const fullBody=fixCompound(parts.map(p=>p.text).join('').trim()); // 合并所有部分（bold+normal+italic）
+      if(!fullBody)return null;
+      const hasBold=parts.some(p=>p.type==='bold');
+      return{type:'para',texts:[fullBody],h:defH,indent,lastY:0,hasBold};
+    }
+    return null;
+  }
+
+  function walkBody(nodes){
+    for(const node of nodes){
+      const tag=node.nodeName.toLowerCase();
+      if(tag==='p'||tag==='div'||tag==='h1'||tag==='h2'||tag==='h3'||tag==='h4'||tag==='h5'||tag==='h6'){
+        const b=processBlock(node);
+        if(!b)continue;
+        if(b.subBlocks){
+          b.subBlocks.forEach(sb=>{cur=sb;blocks.push(cur);});
+          continue;
+        }
+        if(cur&&cur.type===b.type&&b.type==='para'&&cur.indent===b.indent){
+          cur.texts.push(...b.texts);
+        }else{
+          cur={...b,lastY:0};blocks.push(cur);
+        }
+      }else if(tag==='br'){
+        if(cur&&cur.type==='para'){
+          cur={type:'sep',texts:['\n'],h:0,indent:0,lastY:0};
+          blocks.push(cur);cur=null;
+        }
+      }else if(tag==='ul'||tag==='ol'){
+        for(const li of node.children){
+          const b=processBlock(li,12);
+          if(b){cur={...b,lastY:0};blocks.push(cur);}
+        }
+      }
+    }
+  }
+
+  walkBody(doc.body.childNodes);
+  return blocks;
 }
 
 async function loadPDF(file){
