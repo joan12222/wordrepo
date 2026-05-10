@@ -377,7 +377,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.6.0</p>
+  <p class="home-ver">v 1.7.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -542,7 +542,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.6.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.7.0</div>
         </div>
       </div>
     </div>
@@ -606,7 +606,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.6.0';
+const CACHE='wr-1.7.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -652,6 +652,7 @@ const S={
   apiKey:'',
   rvFilters:['完全不会'],
   dailyCount:10,
+  weeklyCount:20,
   giteeToken:'',
   giteeOwner:'',  // 用户名
   giteeRepo:'',   // 仓库名
@@ -1850,65 +1851,70 @@ function getWeeklyWords(){return S.vocab.filter(w=>w.proficiency==='已掌握');
 
 function renderTaskBanner(){
   if(!S.vocab.length)return'';
-  const type=getTodayType();
-  if(type==='daily'){
-    const total=S.vocab.filter(w=>w.proficiency==='掌握中'||w.proficiency==='完全不会').length;
-    const dis=!total;
-    return`<div class="card mb12"${dis?' style="opacity:.55"':''}>
-      <div class="rbet">
-        <div>
-          <div class="bold f14">📚 今日任务</div>
-          <div class="f13 muted mt4">${dis?'暂无需学习的单词':`可学 ${total} 词`}</div>
-        </div>
-        <div class="row g8" style="align-items:center">
-          <input type="number" min="1" max="99" value="${S.dailyCount}"
-            style="width:52px;padding:6px 8px;border:1.5px solid var(--cb);border-radius:8px;font-size:14px;font-weight:600;text-align:center;background:var(--cbg);color:var(--ct)"
-            oninput="S.dailyCount=Math.max(1,parseInt(this.value)||1)" ${dis?'disabled':''}>
-          <button class="btn btn-sm${dis?' btn-g':' btn-p'}" ${dis?'disabled':''} onclick="startTaskSession()">开始</button>
-        </div>
-      </div></div>`;
-  }else{
-    const words=getWeeklyWords();
-    const dis=!words.length;
-    return`<div class="card mb12"${dis?' style="opacity:.55"':''}>
-      <div class="rbet">
-        <div>
-          <div class="bold f14">📋 本周测验（周日）</div>
-          <div class="f13 muted mt4">${dis?'暂无已掌握的单词':`已掌握 ${words.length} 词待测验`}</div>
-        </div>
-        <button class="btn btn-sm${dis?' btn-g':' btn-p'}" ${dis?'disabled':''} onclick="startTaskSession()">开始</button>
-      </div></div>`;
-  }
+  const total=S.vocab.filter(w=>w.proficiency==='掌握中'||w.proficiency==='完全不会').length;
+  const disD=!total;
+  const wAll=getWeeklyWords();
+  const disW=!wAll.length;
+  const wCount=Math.min(S.weeklyCount,wAll.length);
+  return`<div class="card mb12"${disD?' style="opacity:.55"':''}>
+    <div class="rbet">
+      <div>
+        <div class="bold f14">📚 今日任务</div>
+        <div class="f13 muted mt4">${disD?'暂无需学习的单词':`可学 ${total} 词`}</div>
+      </div>
+      <div class="row g8" style="align-items:center">
+        <input type="number" min="1" max="99" value="${S.dailyCount}"
+          style="width:52px;padding:6px 8px;border:1.5px solid var(--cb);border-radius:8px;font-size:14px;font-weight:600;text-align:center;background:var(--cbg);color:var(--ct)"
+          oninput="S.dailyCount=Math.max(1,parseInt(this.value)||1)" ${disD?'disabled':''}>
+        <button class="btn btn-sm${disD?' btn-g':' btn-p'}" ${disD?'disabled':''} onclick="startTaskSession('daily')">开始</button>
+      </div>
+    </div></div>
+  <div class="card mb12"${disW?' style="opacity:.55"':''}>
+    <div class="rbet">
+      <div>
+        <div class="bold f14">📋 本周测验</div>
+        <div class="f13 muted mt4">${disW?'暂无已掌握的单词':`已掌握 ${wAll.length} 词，本次测验 ${wCount} 词`}</div>
+      </div>
+      <div class="row g8" style="align-items:center">
+        <input type="number" min="1" max="999" value="${S.weeklyCount}"
+          style="width:56px;padding:6px 8px;border:1.5px solid var(--cb);border-radius:8px;font-size:14px;font-weight:600;text-align:center;background:var(--cbg);color:var(--ct)"
+          oninput="S.weeklyCount=Math.max(1,parseInt(this.value)||1)" ${disW?'disabled':''}>
+        <button class="btn btn-sm${disW?' btn-g':' btn-p'}" ${disW?'disabled':''} onclick="startTaskSession('weekly')">开始</button>
+      </div>
+    </div></div>`;
 }
 
-function startTaskSession(){
-  const type=getTodayType();
+function startTaskSession(type){
+  if(!type)type=getTodayType();
   if(type==='daily'){
     const words=getDailyWords();
     if(!words.length){toast('暂无需要学习的单词','err');return;}
     S.taskSess={
       type:'daily',phase:'flash',
       flashWords:[...words],
-      queue:[...words],        // working queue; 未掌握词推回队尾循环
+      queue:[...words],
       flipped:false,
-      promoted:new Set(),   // 全部词需手动标记
+      promoted:new Set(),
       quizWords:[],quizQueue:[],lastOk:null,errorIds:new Set(),
       allDef:S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition),
     };
     document.getElementById('task-hdr-title').textContent='今日任务';
     goView('task');renderTaskFlash();
   }else{
-    const words=getWeeklyWords();
-    if(!words.length){toast('暂无已掌握的单词','err');return;}
+    const pool=getWeeklyWords();
+    if(!pool.length){toast('暂无已掌握的单词','err');return;}
+    const count=Math.min(S.weeklyCount,pool.length);
+    const words=[...pool].sort(()=>Math.random()-.5).slice(0,count);
     S.taskSess={
-      type:'weekly',phase:'quiz',
-      flashWords:[],flashIdx:0,flipped:false,promoted:new Set(),
-      quizWords:[...words],allDef:S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition),
+      type:'weekly',phase:'flash',
+      flashWords:[...words],
+      queue:[...words],
+      flipped:false,promoted:new Set(),
+      quizWords:[],quizQueue:[],lastOk:null,errorIds:new Set(),
+      allDef:S.vocab.filter(w=>w.chineseDefinition&&w.englishDefinition),
     };
-    S.taskSess.quizQueue=[...buildAllQuizQs(S.taskSess.quizWords)];
-    S.taskSess.origQCount=S.taskSess.quizQueue.length;S.taskSess.correctCount=0;
     document.getElementById('task-hdr-title').textContent='本周测验';
-    goView('task');renderFlatQ();
+    goView('task');renderTaskFlash();
   }
 }
 
@@ -1953,25 +1959,42 @@ function renderTaskFlash(){
           <div class="fc-hint">点击查看释义 →</div>
         </div>
       </div>`;
+  const btns=ts.flipped?(ts.type==='weekly'
+    ?`<div class="row g8 mt4">
+        <button class="btn btn-p" style="flex:2" onclick="taskFlashAction('next')">下一个</button>
+        <button class="btn btn-g" style="flex:1" onclick="taskFlashAction('retry')">再看一遍</button>
+      </div>`
+    :`<div class="row g8 mt4">${isUnknown
+        ?`<button class="btn btn-p" style="flex:2" onclick="taskFlashAction('promote')">记住了 → 掌握中</button>
+           <button class="btn btn-g" style="flex:1" onclick="taskFlashAction('retry')">再看一遍</button>`
+        :`<button class="btn btn-p btn-full" onclick="taskFlashAction('next')">下一个</button>`
+      }</div>`)
+    :'';
+  const skipBtn=ts.type==='weekly'
+    ?`<div style="text-align:center;margin-top:10px"><button class="btn btn-g" style="font-size:12px;padding:4px 14px" onclick="taskFlashAction('skip')">跳过复习，直接测验</button></div>`
+    :'';
   document.getElementById('task-cnt').innerHTML=`
     <div class="ts-prog"><div class="ts-progfill" style="width:${pct}%"></div></div>
-    <div class="ts-lbl">已记住 ${done} / ${total} 词</div>
+    <div class="ts-lbl">${ts.type==='weekly'?`已复习 ${done} / ${total} 词`:`已记住 ${done} / ${total} 词`}</div>
     ${card}
-    ${ts.flipped?`<div class="row g8 mt4">${isUnknown
-      ?`<button class="btn btn-p" style="flex:2" onclick="taskFlashAction('promote')">记住了 → 掌握中</button>
-         <button class="btn btn-g" style="flex:1" onclick="taskFlashAction('retry')">再看一遍</button>`
-      :`<button class="btn btn-p btn-full" onclick="taskFlashAction('next')">下一个</button>`
-    }</div>`:''}`;
+    ${btns}
+    ${skipBtn}`;
 }
 function flipTaskCard(){if(!S.taskSess.flipped){S.taskSess.flipped=true;renderTaskFlash();}}
 function taskFlashAction(action){
   const ts=S.taskSess;
-  const w=ts.queue.shift(); // 取出队首
+  if(action==='skip'){
+    ts.quizWords=[...ts.flashWords];
+    ts.quizQueue=[...buildAllQuizQs(ts.quizWords)];
+    ts.origQCount=ts.quizQueue.length;ts.correctCount=0;ts.phase='quiz';
+    renderFlatQ();return;
+  }
+  const w=ts.queue.shift();
   ts.flipped=false;
   if(action==='retry'){
-    ts.queue.push(w); // 推回队尾
+    ts.queue.push(w);
   }else{
-    ts.promoted.add(w.id); // promote / next
+    ts.promoted.add(w.id);
   }
   if(ts.queue.length===0){
     ts.quizWords=[...ts.flashWords];
@@ -2007,9 +2030,7 @@ function buildAllQuizQs(words){
         label:'根据英文释义，拼写英文单词',correct:w.word});
     }
   });
-  mc.sort(()=>Math.random()-.5);
-  sp.sort(()=>Math.random()-.5);
-  return [...mc,...sp];
+  return [...mc,...sp].sort(()=>Math.random()-.5);
 }
 function renderFlatQ(){
   const ts=S.taskSess;
