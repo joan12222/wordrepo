@@ -377,7 +377,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.7.0</p>
+  <p class="home-ver">v 1.7.1</p>
 </div>
 
 <!-- MAIN APP -->
@@ -542,7 +542,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.7.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.7.1</div>
         </div>
       </div>
     </div>
@@ -606,7 +606,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.7.0';
+const CACHE='wr-1.7.1';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -1345,6 +1345,43 @@ function clearPend(){
 }
 
 /* ═══════════════════════════════
+   JSON REPAIR HELPER
+═══════════════════════════════ */
+// Fix unescaped double quotes inside JSON string values (common in LLM output)
+// e.g. "usage": "也表示"理解"",  →  "usage": "也表示\"理解\"",
+function repairJSON(str){
+  const lines=str.split('\n');
+  return lines.map(line=>{
+    // Match lines of form:  "key": "...value...",
+    // Greedy inner capture so the LAST " on the line is treated as closing quote
+    return line.replace(
+      /^(\s*"(?:[^"\\]|\\.)*"\s*:\s*")([\s\S]*)("(?:\s*[,}]?\s*)?)$/,
+      (_,prefix,value,suffix)=>{
+        const fixed=value.replace(/(?<!\\)"/g,'\\"');
+        return prefix+fixed+suffix;
+      }
+    );
+  }).join('\n');
+}
+function safeParseJSONArray(raw){
+  const m=raw.match(/\[[\s\S]*\]/);
+  if(!m)throw new Error('未找到 JSON 数组');
+  try{
+    const arr=JSON.parse(m[0]);
+    if(!Array.isArray(arr))throw new Error('内容不是数组');
+    return arr;
+  }catch(e1){
+    try{
+      const arr=JSON.parse(repairJSON(m[0]));
+      if(!Array.isArray(arr))throw new Error('内容不是数组');
+      return arr;
+    }catch(e2){
+      throw new Error(e1.message); // report original error
+    }
+  }
+}
+
+/* ═══════════════════════════════
    MODE TOGGLE
 ═══════════════════════════════ */
 function setGenMode(mode){
@@ -1403,10 +1440,7 @@ function importManualJSON(){
   if(!raw){toast('请先粘贴 JSON 内容','err');return;}
   let arr;
   try{
-    const m=raw.match(/\[[\s\S]*\]/);
-    if(!m)throw new Error('未找到 JSON 数组');
-    arr=JSON.parse(m[0]);
-    if(!Array.isArray(arr))throw new Error('内容不是数组');
+    arr=safeParseJSONArray(raw);
   }catch(err){
     toast('JSON 解析失败：'+err.message,'err');return;
   }
@@ -1558,6 +1592,8 @@ Each object must have exactly these keys:
 - "usage": brief usage notes in Chinese, including part of speech (用法说明)
 - "examples": one natural example sentence with Chinese translation
 
+IMPORTANT: Do NOT use straight double-quote characters (") inside any string value. Use Chinese quotation marks 「」 or paraphrase instead.
+
 Words: ${words.join(', ')}
 
 Return only the JSON array:`;
@@ -1585,8 +1621,7 @@ Return only the JSON array:`;
   const text=data.content?.[0]?.text||'';
   const m=text.match(/\[[\s\S]*\]/);
   if(!m)throw new Error('无法解析API响应格式');
-  const arr=JSON.parse(m[0]);
-  if(!Array.isArray(arr))throw new Error('API响应不是数组');
+  const arr=safeParseJSONArray(m[0]);
   return arr;
 }
 
