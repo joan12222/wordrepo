@@ -317,6 +317,16 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fi .2s;
 }
 
+/* DICT IMPORT REVIEW — FLOATING ADD-ROW BUTTON */
+#dictimport-fab{
+  position:fixed;bottom:calc(var(--nh)+18px);right:18px;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--cp);color:#fff;border:none;
+  font-size:22px;line-height:1;cursor:pointer;
+  z-index:50;box-shadow:0 4px 16px rgba(79,70,229,.4);
+  display:flex;align-items:center;justify-content:center;
+}
+
 /* TASK SESSION */
 .ts-prog{background:var(--cb);border-radius:99px;height:5px;margin-bottom:6px;overflow:hidden}
 .ts-progfill{background:var(--cp);height:100%;border-radius:99px;transition:width .4s}
@@ -377,7 +387,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 1.7.1</p>
+  <p class="home-ver">v 2.0.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -407,9 +417,15 @@ body{
       <button class="btn btn-sm btn-g" id="clearpdf-btn" onclick="clearPDF()" style="display:none">重新上传</button>
     </div>
     <div class="cnt">
+      <!-- 添加目标：普通生词本 / 默写库 -->
+      <div class="mtog mb12">
+        <button class="mtog-btn on" id="addmode-vocab-btn" onclick="setAddMode('vocab')">📚 普通生词</button>
+        <button class="mtog-btn" id="addmode-dict-btn" onclick="setAddMode('dict')">📝 默写标记</button>
+      </div>
+
       <!-- 手动录入单词/词组（始终可见） -->
       <div class="card mb12">
-        <div class="bold f14 mb8">✏️ 手动录入单词 / 词组</div>
+        <div class="bold f14 mb8" id="manual-add-title">✏️ 手动录入单词 / 词组</div>
         <div class="row g8">
           <input type="text" class="inp" id="manual-word-inp"
             placeholder="输入单词或词组（如：take off、self-esteem）" style="flex:1"
@@ -499,6 +515,47 @@ body{
     <div class="cnt" id="review-cnt"></div>
   </div>
 
+  <!-- ── DICTATION SCREEN ── -->
+  <div id="s-dict" class="is">
+    <div class="hdr">
+      <span class="hdr-title">📝 默写库</span>
+      <div class="row g8">
+        <button class="btn btn-sm btn-g" onclick="triggerDictImport()">导入候选</button>
+        <button class="btn btn-sm btn-g" onclick="goAddDict()">去标记生词</button>
+      </div>
+    </div>
+    <input type="file" id="dict-import-input" accept=".json" style="display:none" onchange="onDictImportFile(event)">
+    <div class="cnt" id="dict-cnt"></div>
+    <div id="dbtoolbar" style="position:absolute;bottom:8px;left:12px;right:12px;background:var(--cp);color:#fff;border-radius:13px;padding:12px 15px;display:none;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 4px 20px rgba(79,70,229,.4)">
+      <span id="dselTxt" class="f14 bold">已选 0 个</span>
+      <div class="row g8">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDeleteDict()">删除</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="clearDictSel()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DICTATION PLAY SCREEN ── -->
+  <div id="s-dictplay" class="is">
+    <div class="hdr">
+      <button class="icon-btn" onclick="exitDictSession()">←</button>
+      <span class="hdr-title" id="dictplay-title">默写</span>
+      <div style="width:36px"></div>
+    </div>
+    <div class="cnt" id="dictplay-cnt"></div>
+  </div>
+
+  <!-- ── DICTATION IMPORT REVIEW SCREEN ── -->
+  <div id="s-dictimport" class="is">
+    <div class="hdr">
+      <button class="icon-btn" onclick="cancelDictImport()">←</button>
+      <span class="hdr-title">📥 候选审核</span>
+      <div style="width:36px"></div>
+    </div>
+    <div class="cnt" id="dictimport-cnt"></div>
+    <button id="dictimport-fab" onclick="addDictImportRow()" title="手动添加一条">➕</button>
+  </div>
+
   <!-- ── SETTINGS SCREEN ── -->
   <div id="s-settings" class="is">
     <div class="hdr"><span class="hdr-title">⚙️ 设置</span></div>
@@ -542,7 +599,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 1.7.1</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.0.0</div>
         </div>
       </div>
     </div>
@@ -568,6 +625,9 @@ body{
     </button>
     <button class="nb" data-v="review" onclick="goView('review')">
       <span class="ni">🧠</span><span>复习</span>
+    </button>
+    <button class="nb" data-v="dict" onclick="goView('dict')">
+      <span class="ni">📝</span><span>默写</span>
     </button>
     <button class="nb" data-v="settings" onclick="goView('settings')">
       <span class="ni">⚙️</span><span>设置</span>
@@ -606,7 +666,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-1.7.1';
+const CACHE='wr-2.0.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -638,6 +698,7 @@ self.addEventListener('fetch',e=>{
 const PROFS=['完全不会','掌握中','已掌握','已存档'];
 const PCLS=['b0','b1','b2','b3'];
 const SK_VOCAB='wr_vocab';
+const SK_DICT='wr_dict';
 const SK_KEY='wr_apikey';
 const SK_GITEE_TOKEN='wr_gitee_token';
 const SK_GITEE_OWNER='wr_gitee_owner';  // 存 owner/repo 完整路径
@@ -663,6 +724,18 @@ const S={
   importBuf:null,   // temp import data
   genMode:'manual', // 'manual' | 'api'
   taskSess:null,    // daily/weekly task session
+  addMode:'vocab',  // 'vocab' | 'dict' — 添加屏当前的添加目标
+  dict:[],          // 默写库词条 {id,word,week,meaning,addedAt}
+  dictWeek:1,       // 标记默写词时默认周数
+  dictSel:new Set(),// 默写库列表多选
+  dictFilter:'all', // 默写库周数筛选
+  dictSess:null,    // 默写复习会话
+  dictAddWord:null, // 待确认加入默写库的单词（配合弹窗）
+  dictImportBuf:null, // OCR候选导入：待审核的条目数组 {word,meaning,page,include}
+  dictImportUndo:null, // 单步撤销：{item,index}，删除候选条目后可撤销
+  dictLastImportBatch:null, // 最近一次"确认导入所选"的结果 {ids,count,week}，可整批撤销
+  dictRetryWords:null,      // 结果页"重新开始"用：这一轮全部的词
+  dictRetryWrongWords:null, // 结果页"重练错题"用：这一轮答错的词
 };
 
 /* ═══════════════════════════════
@@ -680,6 +753,13 @@ function saveVocab(){
   }
 }
 
+function loadDict(){
+  try{return JSON.parse(localStorage.getItem(SK_DICT))||[];}catch{return[];}
+}
+function saveDict(){
+  localStorage.setItem(SK_DICT,JSON.stringify(S.dict));
+}
+
 /* ═══════════════════════════════
    INIT
 ═══════════════════════════════ */
@@ -694,6 +774,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(_gr.includes('/')){const p=_gr.split('/');S.giteeOwner=p[0];S.giteeRepo=p[1];}
   document.getElementById('gitee-owner-inp').value=_gr;
   document.getElementById('gitee-token-inp').value=S.giteeToken;
+  S.dict=loadDict();
 
   const saved=loadVocab();
   if(saved!==null){
@@ -735,8 +816,11 @@ function goView(v){
   document.getElementById('s-'+v).classList.add('on');
   if(v==='vocab')renderVocab();
   if(v==='review')renderRvSetup();
+  if(v==='dict')renderDictScreen();
   if(v==='settings')renderStats();
   if(v==='task'){}// rendered by caller
+  if(v==='dictplay'){}// rendered by caller
+  if(v==='dictimport'){}// rendered by caller
 }
 
 /* ═══════════════════════════════
@@ -1280,7 +1364,9 @@ function renderPDFText(blocks){
         sp.className='wt'+(inV?' inv':inP?' pend':'');
         sp.textContent=part;
         if(inV)sp.title='已在生词本';else if(inP)sp.title='已标记';
-        sp.addEventListener('dblclick',()=>addPend(part));
+        sp.addEventListener('dblclick',()=>{
+          if(S.addMode==='dict')addDictWord(part);else addPend(part);
+        });
         el.appendChild(sp);
       }else{
         el.appendChild(document.createTextNode(part));
@@ -1321,7 +1407,7 @@ function updatePendUI(){
   const n=S.pend.length;
   document.getElementById('pend-cnt').textContent=n;
   const box=document.getElementById('pend-box');
-  n>0?box.classList.remove('hidden'):box.classList.add('hidden');
+  (n>0&&S.addMode==='vocab')?box.classList.remove('hidden'):box.classList.add('hidden');
   document.getElementById('pend-tags').innerHTML=
     S.pend.map((w,i)=>`<span class="tag">${esc(w)}<button class="tagx" onclick="removePendIdx(${i})">×</button></span>`).join('');
 }
@@ -1498,7 +1584,12 @@ function addManualWord(){
   const inp=document.getElementById('manual-word-inp');
   const word=inp.value.trim().replace(/\s+/g,' ');
   if(!word){toast('请输入单词或词组','err');return;}
-  addPend(word);
+  if(S.addMode==='dict'){
+    if(word.includes(' ')){toast('默写库只收单个单词，不支持词组/短语','err');return;}
+    addDictWord(word);
+  }else{
+    addPend(word);
+  }
   inp.value='';
   inp.focus();
 }
@@ -1514,8 +1605,67 @@ function addSelectedPhrase(){
   const sel=window.getSelection();
   const text=sel?sel.toString().replace(/\s+/g,' ').trim():'';
   if(text.length<2){toast('请先在PDF中选中词组','err');return;}
-  addPend(text);
+  if(S.addMode==='dict'){
+    if(text.includes(' ')){
+      toast('默写库只收单个单词，请只选中一个单词（可含连字符）','err');
+      try{sel.removeAllRanges();}catch(e){}return;
+    }
+    addDictWord(text);
+  }else{
+    addPend(text);
+  }
   try{sel.removeAllRanges();}catch(e){}
+}
+
+/* ═══════════════════════════════
+   添加目标切换：普通生词 / 默写库
+═══════════════════════════════ */
+function setAddMode(mode){
+  S.addMode=mode;
+  document.getElementById('addmode-vocab-btn').classList.toggle('on',mode==='vocab');
+  document.getElementById('addmode-dict-btn').classList.toggle('on',mode==='dict');
+  document.getElementById('add-phrase-btn').textContent=mode==='dict'?'📝 标记为默写词':'➕ 添加词组';
+  document.getElementById('manual-add-title').textContent=mode==='dict'?'✏️ 手动标记默写词':'✏️ 手动录入单词 / 词组';
+  document.getElementById('manual-word-inp').placeholder=mode==='dict'
+    ?'输入要默写的单词（不支持词组/短语）'
+    :'输入单词或词组（如：take off、self-esteem）';
+  updatePendUI();
+}
+
+function addDictWord(word){
+  const w=word.trim().replace(/\s+/g,' ');
+  if(!w||w.includes(' ')){toast('默写库只收单个单词，不支持词组/短语','err');return;}
+  S.dictAddWord=w;
+  const defWeek=S.dictWeek||1;
+  openModal(`
+    <div class="mtitle">📝 标记默写词</div>
+    <div class="dword" style="font-size:26px;margin-bottom:12px">${esc(w)}</div>
+    <div class="mb12">
+      <div class="dlbl">周数</div>
+      <input type="number" min="1" class="inp" id="dictw-week-inp" value="${defWeek}">
+    </div>
+    <div class="mb12">
+      <div class="dlbl">释义（默写时显示的中文释义，可直接填生僻义）</div>
+      <textarea class="inp" id="dictw-meaning-inp" rows="2" placeholder="例如：心不在焉的"></textarea>
+    </div>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmAddDictWord()">确认添加</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('dictw-meaning-inp')?.focus(),50);
+}
+
+function confirmAddDictWord(){
+  const w=S.dictAddWord;if(!w)return;
+  const week=parseInt(document.getElementById('dictw-week-inp').value)||1;
+  const meaning=document.getElementById('dictw-meaning-inp').value.trim();
+  if(!meaning){toast('请填写释义','err');return;}
+  S.dict.push({id:uid(),word:w,week,meaning,addedAt:new Date().toISOString()});
+  S.dictWeek=week;
+  S.dictAddWord=null;
+  saveDict();
+  closeModal();
+  toast(`已添加「${w}」到第 ${week} 周默写库`,'ok');
 }
 
 async function batchGen(){
@@ -1866,6 +2016,408 @@ function renderSumm(){
       <button class="btn btn-g btn-full" onclick="goView('vocab')">返回生词本</button>
     </div>`;
   S.rvSess=null;
+}
+
+/* ═══════════════════════════════
+   默写库（教材周默写）
+═══════════════════════════════ */
+function goAddDict(){
+  setAddMode('dict');
+  goView('add');
+}
+
+function filteredDict(){
+  return S.dictFilter==='all'?S.dict:S.dict.filter(w=>w.week===S.dictFilter);
+}
+
+function renderDictScreen(){
+  const el=document.getElementById('dict-cnt');
+  const b=S.dictLastImportBatch;
+  const importBanner=b?`
+    <div class="card mb12" style="background:#FEF3C7">
+      <div class="row rbet">
+        <span class="f13">刚导入了 ${b.count} 个词到第${b.week}周</span>
+        <div class="row g8">
+          <button class="btn btn-sm btn-o" onclick="undoDictImportBatch()">↩ 撤销本次导入</button>
+          <button class="icon-btn" onclick="dismissDictImportBatch()">✕</button>
+        </div>
+      </div>
+    </div>`:'';
+  if(S.dict.length===0){
+    el.innerHTML=`${importBanner}<div class="empty"><div class="eico">📝</div>
+      <div class="etit">默写库是空的</div>
+      <div class="muted f13">点击右上角「去标记生词」，在PDF里选中蓝色单词添加</div></div>`;
+    hideDBT();return;
+  }
+  const weeks=[...new Set(S.dict.map(w=>w.week))].sort((a,b)=>a-b);
+  const cnt={};weeks.forEach(w=>cnt[w]=S.dict.filter(x=>x.week===w).length);
+  const filt=['all',...weeks].map(f=>{
+    const lbl=f==='all'?`全部 (${S.dict.length})`:`第${f}周 (${cnt[f]})`;
+    const fArg=f==='all'?"'all'":f;
+    return `<button class="chip ${S.dictFilter===f?'on':''}" onclick="setDictF(${fArg})" oncontextmenu="return confirmDeleteDictWeek(event,${fArg})">${lbl}</button>`;
+  }).join('');
+  const items=filteredDict();
+  const list=items.length===0
+    ?`<div class="empty"><div class="eico">🔍</div><div class="etit">无匹配单词</div></div>`
+    :items.map(w=>`
+      <div class="wi ${S.dictSel.has(w.id)?'sel':''}">
+        <div class="wchk" onclick="toggleDictSel('${w.id}')">${S.dictSel.has(w.id)?'✓':''}</div>
+        <div class="winfo" onclick="showDictDetail('${w.id}')">
+          <div class="wname">${esc(w.word)}</div>
+          <div class="wzh">${esc(w.meaning)}</div>
+        </div>
+        <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+      </div>`).join('');
+  el.innerHTML=`${importBanner}<div class="chips">${filt}</div>
+    <div class="card mt12 mb12">
+      <div class="bold f14 mb8">${S.dictFilter==='all'?'全部':'第'+S.dictFilter+'周'} 共 ${items.length} 词</div>
+      <button class="btn btn-p btn-full" ${items.length?'':'disabled'} onclick="startDictReview()">开始复习</button>
+    </div>
+    ${list}`;
+  updateDBT();
+}
+
+function setDictF(f){S.dictFilter=f;S.dictSel.clear();renderDictScreen();}
+
+function confirmDeleteDictWeek(ev,f){
+  ev.preventDefault();
+  const n=f==='all'?S.dict.length:S.dict.filter(x=>x.week===f).length;
+  if(n===0)return false;
+  const label=f==='all'?'全部':`第${f}周`;
+  openModal(`
+    <div class="mtitle">🗑️ 删除${label}默写词</div>
+    <p class="f13 muted mb16">确定删除${label}的 <strong>${n}</strong> 个词？此操作不可撤销。</p>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-d" style="flex:1" onclick="doDeleteDictWeek(${f==='all'?"'all'":f})">确认删除</button>
+    </div>`);
+  return false;
+}
+function doDeleteDictWeek(f){
+  S.dict=f==='all'?[]:S.dict.filter(x=>x.week!==f);
+  saveDict();S.dictSel.clear();closeModal();
+  if(S.dictFilter===f&&f!=='all')S.dictFilter='all';
+  renderDictScreen();
+  toast('已删除','ok');
+}
+
+function toggleDictSel(id){
+  if(S.dictSel.has(id))S.dictSel.delete(id);else S.dictSel.add(id);
+  renderDictScreen();
+}
+function clearDictSel(){S.dictSel.clear();renderDictScreen();}
+
+function updateDBT(){
+  const tb=document.getElementById('dbtoolbar');
+  const n=S.dictSel.size;
+  tb.style.display=n>0?'flex':'none';
+  if(n>0)document.getElementById('dselTxt').textContent=`已选 ${n} 个`;
+}
+function hideDBT(){document.getElementById('dbtoolbar').style.display='none';}
+
+function batchDeleteDict(){
+  const n=S.dictSel.size;
+  openModal(`
+    <div class="mtitle">🗑️ 删除默写词</div>
+    <p class="f13 muted mb16">确定删除选中的 <strong>${n}</strong> 个词？此操作不可撤销。</p>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-d" style="flex:1" onclick="doBatchDeleteDict()">确认删除</button>
+    </div>`);
+}
+function doBatchDeleteDict(){
+  S.dict=S.dict.filter(x=>!S.dictSel.has(x.id));
+  saveDict();S.dictSel.clear();closeModal();renderDictScreen();
+  toast('已删除所选词','ok');
+}
+
+function showDictDetail(id){
+  const w=S.dict.find(x=>x.id===id);if(!w)return;
+  openModal(`
+    <div class="dword">${esc(w.word)}</div>
+    <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+    <div class="divider"></div>
+    <div class="dfield"><div class="dlbl">释义</div><div class="dval">${esc(w.meaning)}</div></div>
+    <button class="btn btn-d btn-full mt12" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
+}
+function delDictWord(id){
+  S.dict=S.dict.filter(x=>x.id!==id);
+  S.dictSel.delete(id);saveDict();renderDictScreen();
+  toast('已删除');
+}
+
+function buildDictQs(words){
+  const qs=words.map(w=>({word:w,display:w.meaning,answer:w.word}));
+  for(let i=qs.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [qs[i],qs[j]]=[qs[j],qs[i]];
+  }
+  return qs;
+}
+
+function startDictReview(){
+  startDictSession(filteredDict());
+}
+
+function startDictSession(words){
+  if(!words||!words.length){toast('当前范围没有默写词','err');return;}
+  S.dictSess={qs:buildDictQs(words),idx:0,correct:0,incorrect:0,records:[],answered:false};
+  document.getElementById('dictplay-title').textContent='默写复习';
+  goView('dictplay');
+  renderDictQ();
+}
+
+function exitDictSession(){S.dictSess=null;goView('dict');}
+
+function renderDictQ(){
+  const ses=S.dictSess;
+  const rc=document.getElementById('dictplay-cnt');
+  if(ses.idx>=ses.qs.length){renderDictResult();return;}
+  const q=ses.qs[ses.idx];
+  const prog=(ses.idx/ses.qs.length*100).toFixed(1);
+  ses.answered=false;
+  rc.innerHTML=`
+    <div class="fadein">
+      <div class="rvprog"><div class="rvprogfill" style="width:${prog}%"></div></div>
+      <div class="f11 muted" style="text-align:center;margin-bottom:12px">
+        ${ses.idx+1} / ${ses.qs.length} &nbsp;·&nbsp; ✓ ${ses.correct} &nbsp;·&nbsp; ✗ ${ses.incorrect}
+      </div>
+      <div class="qcard">
+        <div class="qtype">第${q.word.week}周 · 根据释义拼写单词</div>
+        <div class="qdisplay def">${esc(q.display)}</div>
+        <div class="qprompt">拼写正确的英文单词</div>
+        <div class="spell-area">
+          <input id="dspell-inp" class="spell-inp" type="text" placeholder="输入英文单词..."
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            onkeydown="if(event.key==='Enter')submitDictAns()">
+          <button class="btn btn-p btn-full" style="margin-top:9px" onclick="submitDictAns()">提交</button>
+        </div>
+        <div id="dqfb" class="fb"></div>
+      </div>
+      <button id="dnxt-btn" class="btn btn-p btn-full hidden" onclick="dictNextQ()">
+        ${ses.idx+1<ses.qs.length?'下一题 →':'查看结果 →'}
+      </button>
+    </div>`;
+  setTimeout(()=>document.getElementById('dspell-inp')?.focus(),50);
+}
+
+function submitDictAns(){
+  const ses=S.dictSess;if(ses.answered)return;
+  const inp=document.getElementById('dspell-inp');if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){toast('请输入单词','err');return;}
+  ses.answered=true;inp.disabled=true;
+  const q=ses.qs[ses.idx];
+  const ok=val.toLowerCase()===q.answer.toLowerCase();
+  ses.records.push({word:q.word,yourAns:val,ok});
+  if(ok)ses.correct++;else ses.incorrect++;
+  inp.classList.add(ok?'ok':'no');
+  const fb=document.getElementById('dqfb');fb.style.display='block';
+  fb.className='fb '+(ok?'ok':'no');
+  fb.innerHTML=ok?'✓ 正确！':`✗ 错误！正确拼写：<strong>${esc(q.answer)}</strong>`;
+  document.getElementById('dnxt-btn').classList.remove('hidden');
+}
+
+function dictNextQ(){S.dictSess.idx++;renderDictQ();}
+
+function renderDictResult(){
+  const ses=S.dictSess;
+  const tot=ses.records.length;
+  const correct=ses.records.filter(r=>r.ok).length;
+  const pct=tot?Math.round(correct/tot*100):0;
+  const emj=pct>=80?'🎉':pct>=60?'😊':'💪';
+  const wrongWords=ses.records.filter(r=>!r.ok).map(r=>r.word);
+  const rows=ses.records.map(r=>`
+    <div class="tr-row">
+      <span class="tr-tag ${r.ok?'tr-pass':'tr-fail'}">${r.ok?'✓':'✗'}</span>
+      <div style="flex:1;min-width:0">
+        <div class="f14 bold">${esc(r.word.word)}</div>
+        <div class="f12 muted">${esc(r.word.meaning)}</div>
+      </div>
+      ${r.ok?'':`<div class="f12" style="color:var(--ce);text-align:right">你写：${esc(r.yourAns)||'（空）'}</div>`}
+    </div>`).join('');
+  S.dictRetryWords=ses.qs.map(q=>q.word);
+  S.dictRetryWrongWords=wrongWords;
+  document.getElementById('dictplay-cnt').innerHTML=`
+    <div class="summ fadein">
+      <div class="sumemj">${emj}</div>
+      <div class="sumscore">${pct}%</div>
+      <div class="sumlbl">${correct} / ${tot} 正确</div>
+    </div>
+    <div class="slbl">逐题结果</div>
+    ${rows}
+    ${wrongWords.length?`<button class="btn btn-p btn-full mt16 mb8" onclick="startDictSession(S.dictRetryWrongWords)">🔁 重练错题 (${wrongWords.length})</button>`:''}
+    <button class="btn ${wrongWords.length?'btn-o':'btn-p'} btn-full mb8" style="margin-top:${wrongWords.length?'0':'16px'}" onclick="startDictSession(S.dictRetryWords)">重新开始（全部）</button>
+    <button class="btn btn-g btn-full" onclick="exitDictSession()">返回默写库</button>`;
+  S.dictSess=null;
+}
+
+/* ═══════════════════════════════
+   默写库：OCR候选导入审核
+   JSON 格式：[{"word":"abandon","meaning":"放弃；抛弃；遗弃","page":4}, ...]
+═══════════════════════════════ */
+function triggerDictImport(){
+  document.getElementById('dict-import-input').click();
+}
+
+function onDictImportFile(e){
+  const f=e.target.files[0];
+  e.target.value='';
+  if(!f)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let arr;
+    try{
+      arr=JSON.parse(reader.result);
+      if(!Array.isArray(arr))throw new Error('不是数组');
+    }catch(err){
+      toast('JSON 解析失败：'+err.message,'err');return;
+    }
+    const items=arr.filter(it=>it&&it.word).map(it=>({
+      word:String(it.word).trim(),
+      meaning:String(it.meaning||'').trim(),
+      page:it.page!=null?it.page:null,
+      include:true,
+    }));
+    if(!items.length){toast('文件里没有可用的候选词条','err');return;}
+    S.dictImportBuf=items;
+    S.dictImportUndo=null;
+    goView('dictimport');
+    renderDictImportScreen();
+  };
+  reader.readAsText(f,'utf-8');
+}
+
+function renderDictImportScreen(){
+  const buf=S.dictImportBuf||[];
+  const rc=document.getElementById('dictimport-cnt');
+  const defWeek=S.dictWeek||1;
+  const n=buf.filter(it=>it.include).length;
+  const undo=S.dictImportUndo;
+  const undoBanner=undo?`
+    <div class="card mb12" style="background:#FEF3C7">
+      <div class="row rbet">
+        <span class="f13">已删除「${esc(undo.item.word)}」</span>
+        <button class="btn btn-sm btn-o" onclick="undoDictImportDelete()">↩ 撤销</button>
+      </div>
+    </div>`:'';
+  const rows=buf.length===0
+    ?`<div class="empty"><div class="eico">📥</div><div class="etit">还没有词条</div><div class="muted f13">点右下角「➕」自己填</div></div>`
+    :buf.map((it,i)=>`
+    <div class="wi" style="align-items:flex-start">
+      <div class="wchk" style="margin-top:10px" onclick="toggleDictImportItem(${i})">${it.include?'✓':''}</div>
+      <div class="winfo" style="cursor:default">
+        <input class="inp mb4" id="dictimport-word-${i}" style="font-weight:600" value="${esc(it.word)}"
+          oninput="S.dictImportBuf[${i}].word=this.value.trim()" placeholder="单词">
+        <input class="inp" id="dictimport-meaning-${i}" value="${esc(it.meaning)}"
+          oninput="S.dictImportBuf[${i}].meaning=this.value.trim()" placeholder="释义">
+        ${it.page!=null?`<div class="f11 muted mt4">第${esc(String(it.page))}页</div>`:''}
+      </div>
+      <button class="icon-btn" style="color:var(--ce)" onclick="removeDictImportItem(${i})">✕</button>
+    </div>`).join('');
+  rc.innerHTML=`
+    ${undoBanner}
+    <div class="card mb12">
+      <div class="row rbet mb8">
+        <span class="bold f14">共 ${buf.length} 条，已选 ${n} 条</span>
+        <div class="row g8">
+          <button class="btn btn-sm btn-g" onclick="selectAllDictImport(true)">全选</button>
+          <button class="btn btn-sm btn-g" onclick="selectAllDictImport(false)">全不选</button>
+        </div>
+      </div>
+      <div class="dlbl">导入到第几周</div>
+      <input type="number" min="1" class="inp" id="dictimport-week-inp" value="${defWeek}">
+    </div>
+    ${rows}
+    <button class="btn btn-p btn-full mt12 mb8" onclick="confirmDictImport()">✅ 确认导入所选</button>
+    <button class="btn btn-g btn-full" onclick="cancelDictImport()">取消</button>`;
+}
+
+function toggleDictImportItem(i){
+  S.dictImportBuf[i].include=!S.dictImportBuf[i].include;
+  renderDictImportScreen();
+}
+function removeDictImportItem(i){
+  S.dictImportUndo={item:S.dictImportBuf[i],index:i};
+  S.dictImportBuf.splice(i,1);
+  renderDictImportScreen();
+}
+function undoDictImportDelete(){
+  const undo=S.dictImportUndo;if(!undo)return;
+  const idx=Math.min(undo.index,S.dictImportBuf.length);
+  S.dictImportBuf.splice(idx,0,undo.item);
+  S.dictImportUndo=null;
+  renderDictImportScreen();
+}
+function selectAllDictImport(flag){
+  S.dictImportBuf.forEach(it=>it.include=flag);
+  renderDictImportScreen();
+}
+function addDictImportRow(){
+  openModal(`
+    <div class="mtitle">➕ 手动添加一条</div>
+    <div class="dlbl">单词</div>
+    <input class="inp mb12" id="dictimport-newword-inp" placeholder="单词">
+    <div class="dlbl">释义</div>
+    <input class="inp mb16" id="dictimport-newmeaning-inp" placeholder="释义"
+      onkeydown="if(event.key==='Enter')confirmAddDictImportRow()">
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmAddDictImportRow()">添加</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('dictimport-newword-inp')?.focus(),50);
+}
+function confirmAddDictImportRow(){
+  const word=document.getElementById('dictimport-newword-inp').value.trim();
+  const meaning=document.getElementById('dictimport-newmeaning-inp').value.trim();
+  if(!word){toast('请输入单词','err');return;}
+  if(!S.dictImportBuf)S.dictImportBuf=[];
+  S.dictImportBuf.push({word,meaning,page:null,include:true});
+  closeModal();
+  renderDictImportScreen();
+  toast('已添加','ok');
+}
+
+function confirmDictImport(){
+  const week=parseInt(document.getElementById('dictimport-week-inp').value)||1;
+  const now=new Date().toISOString();
+  let added=0,skipped=0;
+  const addedIds=[];
+  (S.dictImportBuf||[]).forEach(it=>{
+    if(!it.include)return;
+    const w=(it.word||'').trim();
+    const m=(it.meaning||'').trim();
+    if(!w||w.includes(' ')||!m){skipped++;return;}
+    const id=uid();
+    S.dict.push({id,word:w,week,meaning:m,addedAt:now});
+    addedIds.push(id);
+    added++;
+  });
+  saveDict();
+  S.dictImportBuf=null;
+  S.dictImportUndo=null;
+  S.dictLastImportBatch=added>0?{ids:addedIds,count:added,week}:null;
+  toast(`已导入 ${added} 个${skipped?`，跳过 ${skipped} 个（词/释义为空或含空格）`:''}`,'ok');
+  goView('dict');
+}
+
+function undoDictImportBatch(){
+  const b=S.dictLastImportBatch;if(!b)return;
+  S.dict=S.dict.filter(w=>!b.ids.includes(w.id));
+  saveDict();
+  S.dictLastImportBatch=null;
+  renderDictScreen();
+  toast(`已撤销刚才导入的 ${b.count} 个词`,'ok');
+}
+function dismissDictImportBatch(){
+  S.dictLastImportBatch=null;
+  renderDictScreen();
+}
+
+function cancelDictImport(){
+  S.dictImportBuf=null;
+  S.dictImportUndo=null;
+  goView('dict');
 }
 
 /* ═══════════════════════════════
