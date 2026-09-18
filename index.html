@@ -387,7 +387,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 2.1.2</p>
+  <p class="home-ver">v 2.2.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -520,6 +520,7 @@ body{
     <div class="hdr">
       <span class="hdr-title">📝 默写库</span>
       <div class="row g8">
+        <button class="btn btn-sm btn-g" onclick="selAllDict()">全选</button>
         <button class="btn btn-sm btn-g" onclick="triggerDictImport()">导入候选</button>
         <button class="btn btn-sm btn-g" onclick="goAddDict()">去标记生词</button>
       </div>
@@ -529,6 +530,7 @@ body{
     <div id="dbtoolbar" style="position:absolute;bottom:8px;left:12px;right:12px;background:var(--cp);color:#fff;border-radius:13px;padding:12px 15px;display:none;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 4px 20px rgba(79,70,229,.4)">
       <span id="dselTxt" class="f14 bold">已选 0 个</span>
       <div class="row g8">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="batchEditDictWeek()">改周数</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDeleteDict()">删除</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="clearDictSel()">取消</button>
       </div>
@@ -599,7 +601,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.1.2</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.2.0</div>
         </div>
       </div>
     </div>
@@ -666,7 +668,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.1.2';
+const CACHE='wr-2.2.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -2092,6 +2094,14 @@ function renderDictScreen(){
 
 function setDictF(f){S.dictFilter=f;S.dictSel.clear();renderDictScreen();}
 
+function selAllDict(){
+  const f=filteredDict();
+  if(!f.length)return;
+  if(S.dictSel.size===f.length)S.dictSel.clear();
+  else f.forEach(w=>S.dictSel.add(w.id));
+  renderDictScreen();
+}
+
 function confirmDeleteDictWeek(ev,f){
   ev.preventDefault();
   const n=f==='all'?S.dict.length:S.dict.filter(x=>x.week===f).length;
@@ -2160,10 +2170,78 @@ function showDictDetail(id){
   const w=S.dict.find(x=>x.id===id);if(!w)return;
   openModal(`
     <div class="dword">${esc(w.word)}</div>
-    <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+    <div class="row rbet" style="align-items:center;margin-top:6px">
+      <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+      <button class="btn btn-sm btn-o" onclick="editDictWeek('${id}')">修改周数</button>
+    </div>
     <div class="divider"></div>
     <div class="dfield"><div class="dlbl">释义</div><div class="dval">${esc(w.meaning)}</div></div>
     <button class="btn btn-d btn-full mt12" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
+}
+
+function editDictWeek(id){
+  const w=S.dict.find(x=>x.id===id);if(!w)return;
+  S.dictEditWeekIds=[id];
+  openModal(`
+    <div class="mtitle">📅 修改周数</div>
+    <div class="dword" style="font-size:22px;margin-bottom:12px">${esc(w.word)}</div>
+    <div class="mb12">
+      <div class="dlbl">新周数</div>
+      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${w.week}">
+    </div>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmEditDictWeek()">确认修改</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('dictw-editweek-inp')?.focus(),50);
+}
+
+function batchEditDictWeek(){
+  const n=S.dictSel.size;
+  if(!n)return;
+  S.dictEditWeekIds=[...S.dictSel];
+  openModal(`
+    <div class="mtitle">📅 修改周数</div>
+    <p class="f13 muted mb12">将选中的 <strong>${n}</strong> 个词改到第几周？</p>
+    <div class="mb12">
+      <div class="dlbl">新周数</div>
+      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${S.dictFilter!=='all'?S.dictFilter:''}">
+    </div>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmEditDictWeek()">确认修改</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('dictw-editweek-inp')?.focus(),50);
+}
+
+function confirmEditDictWeek(){
+  const ids=S.dictEditWeekIds;if(!ids||!ids.length)return;
+  const week=parseInt(document.getElementById('dictw-editweek-inp').value);
+  if(!week||week<1){toast('请输入有效的周数','err');return;}
+  ids.forEach(id=>{
+    const w=S.dict.find(x=>x.id===id);if(!w)return;
+    if(w.week===week)return;
+    w.week=week;
+    Object.keys(S.dictWeekWrong).forEach(wk=>{
+      const pool=S.dictWeekWrong[wk];
+      const i=pool.indexOf(id);
+      if(i===-1)return;
+      pool.splice(i,1);
+      if(Number(wk)!==week){
+        const np=S.dictWeekWrong[week]||(S.dictWeekWrong[week]=[]);
+        if(!np.includes(id))np.push(id);
+      }
+    });
+  });
+  saveDict();
+  pruneDictWeekWrong();
+  saveDictWeekWrong();
+  S.dictEditWeekIds=null;
+  S.dictSel.clear();
+  closeModal();
+  if(S.dictFilter!=='all'&&!S.dict.some(x=>x.week===S.dictFilter))S.dictFilter='all';
+  renderDictScreen();
+  toast(`已修改到第 ${week} 周`,'ok');
 }
 function delDictWord(id){
   S.dict=S.dict.filter(x=>x.id!==id);
