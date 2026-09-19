@@ -387,7 +387,7 @@ body{
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
   </div>
-  <p class="home-ver">v 2.2.0</p>
+  <p class="home-ver">v 2.3.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -530,6 +530,7 @@ body{
     <div id="dbtoolbar" style="position:absolute;bottom:8px;left:12px;right:12px;background:var(--cp);color:#fff;border-radius:13px;padding:12px 15px;display:none;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 4px 20px rgba(79,70,229,.4)">
       <span id="dselTxt" class="f14 bold">已选 0 个</span>
       <div class="row g8">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.25);color:#fff" onclick="startDictSelectedReview()">▶ 练习</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="batchEditDictWeek()">改周数</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDeleteDict()">删除</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="clearDictSel()">取消</button>
@@ -601,7 +602,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.2.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.3.0</div>
         </div>
       </div>
     </div>
@@ -668,7 +669,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.2.0';
+const CACHE='wr-2.3.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -2264,6 +2265,12 @@ function startDictReview(){
   startDictSession(filteredDict());
 }
 
+function startDictSelectedReview(){
+  const words=S.dict.filter(w=>S.dictSel.has(w.id));
+  if(!words.length){toast('请先选中要练习的单词','err');return;}
+  startDictSession(words);
+}
+
 function startDictWeekWrongRetry(week){
   const ids=new Set(S.dictWeekWrong[week]||[]);
   const words=S.dict.filter(w=>ids.has(w.id));
@@ -2525,7 +2532,11 @@ function confirmDictImport(){
   S.dictImportBuf=null;
   S.dictImportUndo=null;
   S.dictLastImportBatch=added>0?{ids:addedIds,count:added,week}:null;
-  toast(`已导入 ${added} 个${skipped?`，跳过 ${skipped} 个（词/释义为空或含空格）`:''}`,'ok');
+  if(added>0){
+    S.dictSel=new Set(addedIds);
+    S.dictFilter=week;
+  }
+  toast(`已导入 ${added} 个${skipped?`，跳过 ${skipped} 个（词/释义为空或含空格）`:''}${added>0?'，已自动选中':''}`,'ok');
   goView('dict');
 }
 
