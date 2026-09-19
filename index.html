@@ -386,8 +386,9 @@ body{
   <div class="home-btns">
     <button class="btn btn-p" onclick="importJSON()">📂 导入生词本 (JSON)</button>
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
+    <button class="btn btn-o" onclick="openHomePull()">☁️ 从远端拉取</button>
   </div>
-  <p class="home-ver">v 2.3.0</p>
+  <p class="home-ver">v 2.3.1</p>
 </div>
 
 <!-- MAIN APP -->
@@ -574,7 +575,7 @@ body{
       <div class="mb12">
         <span class="slbl">Gitee 云同步</span>
         <div class="card">
-          <p class="f13 muted mb8">词库自动同步至 Gitee 私有仓库（vocab.json），多设备共用。</p>
+          <p class="f13 muted mb8">生词本和默写库自动同步至 Gitee 私有仓库，多设备共用。</p>
           <input type="text" class="inp mb8" id="gitee-owner-inp" placeholder="仓库路径，如 joan1222/ciji">
           <input type="password" class="inp mb8" id="gitee-token-inp" placeholder="Personal Access Token">
           <div class="row g8 mb8">
@@ -602,7 +603,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.3.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.3.1</div>
         </div>
       </div>
     </div>
@@ -669,7 +670,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.3.0';
+const CACHE='wr-2.3.1';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -751,12 +752,15 @@ function loadVocab(){
   try{return JSON.parse(localStorage.getItem(SK_VOCAB))||null;}catch{return null;}
 }
 let _pushTimer=null;
-function saveVocab(){
-  localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
+function scheduleGiteePush(){
   if(S.giteeToken&&S.giteeOwner){
     clearTimeout(_pushTimer);
     _pushTimer=setTimeout(giteePush,3000);
   }
+}
+function saveVocab(){
+  localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
+  scheduleGiteePush();
 }
 
 function loadDict(){
@@ -764,6 +768,7 @@ function loadDict(){
 }
 function saveDict(){
   localStorage.setItem(SK_DICT,JSON.stringify(S.dict));
+  scheduleGiteePush();
 }
 
 function loadDictWeekWrong(){
@@ -771,6 +776,7 @@ function loadDictWeekWrong(){
 }
 function saveDictWeekWrong(){
   localStorage.setItem(SK_DICT_WRONG,JSON.stringify(S.dictWeekWrong));
+  scheduleGiteePush();
 }
 
 /* ═══════════════════════════════
@@ -809,6 +815,38 @@ document.addEventListener('DOMContentLoaded',()=>{
 ═══════════════════════════════ */
 function newVocab(){
   S.vocab=[];saveVocab();showMain();
+}
+function openHomePull(){
+  openModal(`
+    <div class="mtitle">☁️ 从远端拉取</div>
+    <p class="f13 muted mb12">填写你在其他设备上配置过的 Gitee 仓库信息，拉取已同步的生词本和默写库数据。</p>
+    <div class="mb12">
+      <div class="dlbl">仓库路径</div>
+      <input class="inp" id="home-gitee-owner-inp" placeholder="用户名/仓库名，如 joan1222/ciji">
+    </div>
+    <div class="mb12">
+      <div class="dlbl">Personal Access Token</div>
+      <input class="inp" type="password" id="home-gitee-token-inp" placeholder="Personal Access Token">
+    </div>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmHomePull()">拉取</button>
+    </div>`);
+}
+async function confirmHomePull(){
+  const repo=document.getElementById('home-gitee-owner-inp').value.trim();
+  const token=document.getElementById('home-gitee-token-inp').value.trim();
+  if(!repo||!token){toast('请填写仓库路径和 Token','err');return;}
+  if(!repo.includes('/')){toast('仓库路径格式应为 用户名/仓库名','err');return;}
+  const parts=repo.split('/');
+  S.giteeOwner=parts[0].trim();S.giteeRepo=parts[1].trim();S.giteeToken=token;
+  localStorage.setItem(SK_GITEE_OWNER,repo);
+  localStorage.setItem(SK_GITEE_TOKEN,token);
+  document.getElementById('gitee-owner-inp').value=repo;
+  document.getElementById('gitee-token-inp').value=token;
+  closeModal();
+  const ok=await giteePull(true);
+  if(ok)showMain();
 }
 function showMain(){
   document.getElementById('s-home').style.display='none';
@@ -1674,7 +1712,8 @@ function confirmAddDictWord(){
   const week=parseInt(document.getElementById('dictw-week-inp').value)||1;
   const meaning=document.getElementById('dictw-meaning-inp').value.trim();
   if(!meaning){toast('请填写释义','err');return;}
-  S.dict.push({id:uid(),word:w,week,meaning,addedAt:new Date().toISOString()});
+  const _now=new Date().toISOString();
+  S.dict.push({id:uid(),word:w,week,meaning,addedAt:_now,lastModified:_now});
   S.dictWeek=week;
   S.dictAddWord=null;
   saveDict();
@@ -2223,6 +2262,7 @@ function confirmEditDictWeek(){
     const w=S.dict.find(x=>x.id===id);if(!w)return;
     if(w.week===week)return;
     w.week=week;
+    w.lastModified=new Date().toISOString();
     Object.keys(S.dictWeekWrong).forEach(wk=>{
       const pool=S.dictWeekWrong[wk];
       const i=pool.indexOf(id);
@@ -2524,7 +2564,7 @@ function confirmDictImport(){
     const m=(it.meaning||'').trim();
     if(!w||w.includes(' ')||!m){skipped++;return;}
     const id=uid();
-    S.dict.push({id,word:w,week,meaning:m,addedAt:now});
+    S.dict.push({id,word:w,week,meaning:m,addedAt:now,lastModified:now});
     addedIds.push(id);
     added++;
   });
@@ -3073,10 +3113,33 @@ function mergeVocab(local,remote){
   return Object.values(map);
 }
 
+function mergeDict(local,remote){
+  const map={};
+  remote.forEach(w=>{if(w.id)map[w.id]=w;});
+  local.forEach(w=>{
+    if(!w.id)return;
+    if(!map[w.id]){map[w.id]=w;}
+    else{
+      const rm=map[w.id].lastModified||map[w.id].addedAt||'';
+      const lm=w.lastModified||w.addedAt||'';
+      if(lm>rm)map[w.id]=w;
+    }
+  });
+  return Object.values(map);
+}
+
+function mergeDictWeekWrong(local,remote){
+  const out={};
+  new Set([...Object.keys(local||{}),...Object.keys(remote||{})]).forEach(wk=>{
+    out[wk]=[...new Set([...(local[wk]||[]),...(remote[wk]||[])])];
+  });
+  return out;
+}
+
 function giteeBase(){return `https://gitee.com/api/v5/repos/${encodeURIComponent(S.giteeOwner)}/${encodeURIComponent(S.giteeRepo)}/contents/${GITEE_FILE}`;}
 
 async function giteePull(showToast=true){
-  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return;
+  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return false;
   setGiteeStatus('同步中…');
   try{
     const url=`${giteeBase()}?access_token=${encodeURIComponent(S.giteeToken)}`;
@@ -3088,7 +3151,7 @@ async function giteePull(showToast=true){
       }
       // 文件不存在，直接推送本地数据
       setGiteeStatus('远端无数据，正在初始化…');
-      await giteePush();return;
+      await giteePush();return true;
     }
     if(!res.ok)throw new Error('HTTP '+res.status);
     const json=await res.json();
@@ -3096,27 +3159,37 @@ async function giteePull(showToast=true){
       // 文件不存在（Gitee 返回空数组或无 content）
       clearTimeout(_pushTimer);
       setGiteeStatus('远端无数据，正在初始化…');
-      await giteePush();return;
+      await giteePush();return true;
     }
     S.giteeSha=json.sha;
     const remote=JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))));
-    if(!Array.isArray(remote))throw new Error('远端数据格式错误');
-    S.vocab=mergeVocab(S.vocab,remote);
+    const remoteVocab=Array.isArray(remote)?remote:(remote.vocab||[]);
+    const remoteDict=Array.isArray(remote)?[]:(remote.dict||[]);
+    const remoteDictWrong=Array.isArray(remote)?{}:(remote.dictWeekWrong||{});
+    S.vocab=mergeVocab(S.vocab,remoteVocab);
+    S.dict=mergeDict(S.dict,remoteDict);
+    S.dictWeekWrong=mergeDictWeekWrong(S.dictWeekWrong,remoteDictWrong);
     localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
+    localStorage.setItem(SK_DICT,JSON.stringify(S.dict));
+    pruneDictWeekWrong();
     renderVocab();
+    renderDictScreen();
     const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
     setGiteeStatus(`上次同步 ${t}`,'ok');
     if(showToast)toast('同步成功','ok');
+    return true;
   }catch(err){
     setGiteeStatus('同步失败：'+err.message,'err');
     if(showToast)toast('同步失败：'+err.message,'err');
+    return false;
   }
 }
 
 async function giteePush(){
   if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return;
   try{
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(S.vocab,null,2))));
+    const payload={vocab:S.vocab,dict:S.dict,dictWeekWrong:S.dictWeekWrong};
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload,null,2))));
     const tk=encodeURIComponent(S.giteeToken);
     const base=giteeBase();
     // 若无 SHA，先尝试获取（文件可能已存在）
