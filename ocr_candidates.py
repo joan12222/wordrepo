@@ -265,7 +265,8 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
             peers = sorted((i for i, b in enumerate(boxes) if abs((bbox(b[0])[1] + bbox(b[0])[3]) / 2 - (by0 + by1) / 2) < bh * 0.5),
                            key=lambda i: bbox(boxes[i][0])[0])
             for i in peers:
-                if bbox(boxes[i][0])[0] <= bx1 - 5:
+                cx0, _, cx1, _ = bbox(boxes[i][0])
+                if i == last or (cx0 + cx1) / 2 <= bx1:  # OCR 框之间可能有十几像素重叠，按中心点判断在不在右侧
                     continue
                 t2 = boxes[i][1].replace('’', "'")
                 if not POS_LEAD.match(t2):
