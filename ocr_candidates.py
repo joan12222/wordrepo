@@ -25,6 +25,7 @@ POS_SET = {'vt', 'vi', 'vl', 'adj', 'adv', 'ad', 'prep', 'conj', 'pron', 'num', 
 POS_TAIL = r"(?:\s*[\.,．，]|(?=\s*[\(\[〔（一-鿿]))"
 POS_AFTER = re.compile(r"\s*(?:/[^/]{1,40}/\s*)?(?:\(=?[^)]{0,30}\)\s*)?(" + POS + r")" + POS_TAIL)
 POS_ANY = re.compile(r"(?<![A-Za-z])" + POS + POS_TAIL)
+POS_LEAD = re.compile(r"\s*\*?(?:" + POS + r"|interj)\s*[\.,．，]")  # 框文本以词性开头
 TOKEN = re.compile(r"\*?[A-Za-z][A-Za-z'’\-]*")
 PHON = re.compile(r"/[^/\s一-鿿][^/一-鿿]{0,30}/")  # 音标段不含中文、斜杠后不接空格（排除 "A/ B a.感到/使人" 这类斜杠并列）
 ABBR = {'sb', 'sth', 'pl', 'etc', 'eg', 'ie', 'sb\'s', 'one\'s'}
@@ -249,7 +250,8 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
             toks.append(dict(word=word, kind=kind, box=bi, x=(xa + xb) / 2, xa=xa, xb=xb, y=(y0 + y1) / 2,
                              y1=y1, text=t, start=m.start(), end=m.end(), mstart=mstart, flags=flags, score=score,
                              unsplit=unsplit))
-    # 释义初稿：从词性开始，到同框下一个 H/D 为止；到框尾时接一行以中文/括号开头的续行
+    # 释义初稿：从词性开始，到同框下一个 H/D 为止；到框尾时先接同一行右侧以词性开头的框（如 email 的
+    # "vt.给…发电子邮件" 被单独识别成一框），再接下一行以中文/括号开头的续行
     hd = [k for k in toks if k['kind'] in 'HD']
     for k in hd:
         if k['mstart'] is None:
@@ -258,11 +260,25 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
         end = min(nxt) if nxt else len(k['text'])
         mean = k['text'][k['mstart']:end].strip()
         if not nxt:
-            # 该框是本行最右一个框时，下一行以中文/括号开头的框视为释义续行，接到下一个派生词之前
-            bx0, by0, bx1, by1 = bbox(boxes[k['box']][0]); bh = by1 - by0
-            peers = [bbox(b[0]) for b in boxes if abs((bbox(b[0])[1] + bbox(b[0])[3]) / 2 - (by0 + by1) / 2) < bh * 0.5]
-            if bx0 >= max(q[0] for q in peers) - 1:
-                for poly2, text2, s2 in boxes[k['box'] + 1:]:
+            last = k['box']
+            bx0, by0, bx1, by1 = bbox(boxes[last][0]); bh = by1 - by0
+            peers = sorted((i for i, b in enumerate(boxes) if abs((bbox(b[0])[1] + bbox(b[0])[3]) / 2 - (by0 + by1) / 2) < bh * 0.5),
+                           key=lambda i: bbox(boxes[i][0])[0])
+            for i in peers:
+                if bbox(boxes[i][0])[0] <= bx1 - 5:
+                    continue
+                t2 = boxes[i][1].replace('’', "'")
+                if not POS_LEAD.match(t2):
+                    break
+                d2 = next((q for q in TOKEN.finditer(t2) if POS_AFTER.match(t2[q.end():]) and q.start() > 0), None)
+                mean += ' ' + (t2[:d2.start()] if d2 else t2).strip()
+                if d2:
+                    break
+                last, bx1 = i, bbox(boxes[i][0])[2]
+            # 链上最后一个框是本行最右一个框时，下一行以中文/括号开头的框视为释义续行，接到下一个派生词之前
+            bx0, by0, _, by1 = bbox(boxes[last][0])
+            if bx0 >= max(bbox(boxes[i][0])[0] for i in peers) - 1:
+                for poly2, text2, s2 in boxes[last + 1:]:
                     cx0, cy0, cx1, cy1 = bbox(poly2)
                     if cy0 > by1 + bh * 1.2:
                         break
@@ -520,7 +536,29 @@ def final_entries(m, rv):
         e['word'] = e['word'].lstrip('*').strip()
         if not e['word'] or ' ' in e['word'] or not e['meaning'].strip():
             errs.append(f'不满足导入限制：{e}')
+    errs += pos_tail_misses(m, rv)
     return out, errs
+
+
+def pos_tail_misses(m, rv):
+    """同一行右侧以词性开头的框（到下一个收录词之前），其中文没出现在最终释义里的，视为漏并词性。
+    复核确认不属于该词的，在 review.json 的 meaning_checked 里登记编号豁免。"""
+    ocr = json.load(open(os.path.join(page_dir(m['page']), 'ocr.json'), encoding='utf-8'))
+    keep = set(rv.get('ok', [])) | {int(i) for i in rv.get('fix', {})}
+    cands = [c for c in m['candidates'] if c['id'] in keep]
+    han = lambda s: ''.join(HAN.findall(s))
+    errs = []
+    for c in cands:
+        if c['id'] in rv.get('meaning_checked', []):
+            continue
+        meaning = han(rv.get('fix', {}).get(str(c['id']), {}).get('meaning', c['meaning']))
+        xlim = min((k['xa'] for k in cands if abs(k['y'] - c['y']) < 15 and k['x'] > c['x']), default=1e9)
+        for poly, t, s in ocr['full']:
+            x0, y0, x1, y1 = bbox(poly)
+            head = han(t)[:3]
+            if abs((y0 + y1) / 2 - c['y']) < 15 and c['xb'] < x0 < xlim and POS_LEAD.match(t) and head and head not in meaning:
+                errs.append(f'#{c["id"]} {c["word"]} 同行还有词性「{t.strip()}」没并进释义（确认不属于该词就登记 meaning_checked）')
+    return errs
 
 
 def cmd_build(args):
