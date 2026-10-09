@@ -66,12 +66,34 @@ def shade_mask(img):
     """「辨析」等浅青色底纹框（底色约 (225~233, 238~247, 246~252)），返回大块底纹区域的掩码。"""
     c = img.astype(np.int16)
     r, g, b = c[..., 0], c[..., 1], c[..., 2]
-    m = ((r < 242) & (b > 235) & (b - r >= 10) & (g - r >= 6)).astype(np.uint8)
-    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
+    raw = ((r < 242) & (b > 235) & (b - r >= 10) & (g - r >= 6)).astype(np.uint8)
+    m = cv2.morphologyEx(raw, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
     h, w = m.shape
     n, lab, st, _ = cv2.connectedComponentsWithStats(m)
-    keep = [i for i in range(1, n) if st[i][4] > 0.02 * w * h and st[i][2] > 0.4 * w]
-    return np.isin(lab, keep)
+    # 底纹框里底色成片铺满；青色文字的浅色描边闭运算后也会连成块，但原始底色像素稀疏，用占比排除
+    out = np.zeros((h, w), bool)
+    for i in range(1, n):
+        x, y, bw, bh, area = st[i]
+        if area < 0.02 * w * h or bw < 0.4 * w or raw[lab == i].mean() <= 0.5:
+            continue
+        # 闭运算可能把框外相邻的文字行也连进来：按行/列底色占比裁出真正铺底色的矩形
+        # 两个底纹框之间夹着的词条行也可能被连进来，所以按连续行段（间隔 >8 行就拆开）分别裁
+        sub = raw[y:y + bh, x:x + bw]
+        rows = np.nonzero(sub.mean(axis=1) > 0.4)[0]
+        if not len(rows):
+            continue
+        runs, start = [], rows[0]
+        for a, b in zip(rows, rows[1:]):
+            if b - a > 8:
+                runs.append((start, a)); start = b
+        runs.append((start, rows[-1]))
+        for r0, r1 in runs:
+            if r1 - r0 < 30:
+                continue
+            cols = np.nonzero(sub[r0:r1 + 1].mean(axis=0) > 0.4)[0]
+            if len(cols):
+                out[y + r0:y + r1 + 1, x + cols[0]:x + cols[-1] + 1] = True
+    return out
 
 
 def run_ocr(ocr, img):
@@ -198,7 +220,7 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
                 excluded.append(dict(text=raw, reason='缩写 sb/sth 等', box=[x0, y0, x1, y1])); continue
             if not head_tok and len(word) == 1:
                 excluded.append(dict(text=raw, reason='单字母（多为〔C〕〔U〕等标记）', box=[x0, y0, x1, y1])); continue
-            flags = []
+            flags, unsplit = [], None
             pm = POS_AFTER.match(after)
             # 词性和单词粘连（"*elevatevl."、"emotionallyad."）：词尾是词性且后面紧跟句点时拆开
             suf = None
@@ -212,7 +234,7 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
                 mstart = pa.start() if pa else ph
             elif suf:
                 kind = 'D'; mstart = m.end() - len(suf)
-                word = word[:-len(suf)]
+                unsplit, word = word, word[:-len(suf)]
                 flags.append('词性粘连拆分')
             elif pm:
                 kind = 'D'; mstart = m.end() + pm.start(1)
@@ -225,7 +247,8 @@ def tokens_of_read(boxes, img, cm, ink, shade, w, h):
                 flags.append('星号')
             xa, xb = xpos(m.start()), xpos(m.end())
             toks.append(dict(word=word, kind=kind, box=bi, x=(xa + xb) / 2, xa=xa, xb=xb, y=(y0 + y1) / 2,
-                             y1=y1, text=t, start=m.start(), end=m.end(), mstart=mstart, flags=flags, score=score))
+                             y1=y1, text=t, start=m.start(), end=m.end(), mstart=mstart, flags=flags, score=score,
+                             unsplit=unsplit))
     # 释义初稿：从词性开始，到同框下一个 H/D 为止；到框尾时接一行以中文/括号开头的续行
     hd = [k for k in toks if k['kind'] in 'HD']
     for k in hd:
@@ -367,6 +390,12 @@ def postprocess(p, doc):
     cm, ink, shade = cyan_mask(img), dark_mask(img), shade_mask(img)
     tf, ef = tokens_of_read(data['full'], img, cm, ink, shade, w, h)
     ts, es = tokens_of_read(data['strip'], img, cm, ink, shade, w, h)
+    # 粘连拆分的反悔：整词本身拼写合法（如 "widen,"、"lengthen,"）就不拆，按未解释英文进待核
+    us = spell_check([k['unsplit'] for k in tf + ts if k.get('unsplit')])
+    for k in tf + ts:
+        if k.get('unsplit') and us.get(k['unsplit']):
+            k.update(word=k['unsplit'], kind='U', mstart=None, meaning='')
+            k['flags'] = [f for f in k['flags'] if f != '词性粘连拆分']
     raw = merge_reads(tf, ts)
     spell = spell_check([(a or b)['word'] for a, b in raw] + [b['word'] for a, b in raw if a and b])
     cands = []
@@ -427,6 +456,8 @@ def cmd_extract(args):
     from rapidocr_onnxruntime import RapidOCR
     pages = parse_pages(args); doc = fitz.open(PDF); ocr = RapidOCR()
     for p in pages:
+        if os.path.exists(os.path.join(page_dir(p), 'review.json')):
+            print(f'p{p}: 已有 review.json，跳过（重做后处理会改变候选编号，导致裁决错位）'); continue
         t0 = time.time(); ocr_page(ocr, doc, p)
         m = postprocess(p, doc)
         pend = sum(c['status'] == 'pending' for c in m['candidates'])
