@@ -8,13 +8,14 @@
   python ocr_candidates.py crop <页> <y0> <y1> [x0 x1] [dpi]   无标记原图局部（坐标为该页 200dpi 转正后的像素）
   python ocr_candidates.py build <起页> <止页>        汇总 review.json → 候选_pA-B.json + 待核_pA-B.md
   python ocr_candidates.py eval <页列表> root|v2      与标准答案对比（root=项目根目录旧候选，v2=候选v2/truth/）
+  python ocr_candidates.py compare <参照.json> <待测.json>   逐页对比两份候选输出（模型对比测试用）
 """
 import json, os, re, subprocess, sys, tempfile, time
 import cv2, fitz, numpy as np
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PDF = os.path.join(ROOT, '名校名师高考英语词汇全攻略（新）.pdf')
-OUT = os.path.join(ROOT, '候选v2')
+OUT = os.path.join(ROOT, os.environ.get('OCR_OUT') or '候选v2')  # 环境变量 OCR_OUT 可改到隔离目录（模型对比测试用）
 WORK = os.path.join(OUT, 'work')
 OCR_KW = dict(text_score=0.0, box_thresh=0.3, unclip_ratio=1.6)  # rapidocr 默认 text_score=0.5 会静默丢行
 DPI, DPI_HI, N_STRIPS, N_REVIEW = 200, 300, 7, 4
@@ -650,10 +651,38 @@ def cmd_eval(args):
                   f'未覆盖 {miss}  多出 {len(pool)}')
 
 
+def cmd_compare(args):
+    """按页对比参照与待测：漏收、多收、拼写不同（同页编辑距离≤2 对齐）、释义不同（只比中文和词性字母）。"""
+    load = lambda f: json.load(open(f, encoding='utf-8'))
+    ref, got = load(args[0]), load(args[1])
+    key = lambda s: re.sub(r'[^一-鿿a-z]', '', s.replace('（补）', ''))
+    stats = dict(参照=len(ref), 待测=len(got), 漏收=0, 多收=0, 拼写不同=0, 释义不同=0)
+    for p in sorted({e['page'] for e in ref + got}):
+        r = [e for e in ref if e['page'] == p]; g = [e for e in got if e['page'] == p]
+        pool = list(g); lines = []
+        for e in r:
+            hit = next((x for x in pool if x['word'] == e['word']), None)
+            if hit is None:
+                hit = min(pool, key=lambda x: edit1(e['word'], x['word']), default=None)
+                if hit is not None and edit1(e['word'], hit['word']) <= 2:
+                    lines.append(f'  拼写不同  参照 {e["word"]} ｜ 待测 {hit["word"]}'); stats['拼写不同'] += 1
+                else:
+                    lines.append(f'  漏收      {e["word"]}｜{e["meaning"]}'); stats['漏收'] += 1; continue
+            pool.remove(hit)
+            if key(e['meaning']) != key(hit['meaning']):
+                lines.append(f'  释义不同  {e["word"]}\n            参照 {e["meaning"]}\n            待测 {hit["meaning"]}'); stats['释义不同'] += 1
+        for x in pool:
+            lines.append(f'  多收      {x["word"]}｜{x["meaning"]}'); stats['多收'] += 1
+        if lines:
+            print(f'p{p}（参照 {len(r)}，待测 {len(g)}）'); print('\n'.join(lines))
+    print('合计：' + '，'.join(f'{k} {v}' for k, v in stats.items()))
+
+
 if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8')
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
-    fn = dict(extract=cmd_extract, show=cmd_show, crop=cmd_crop, build=cmd_build, eval=cmd_eval).get(cmd)
+    fn = dict(extract=cmd_extract, show=cmd_show, crop=cmd_crop, build=cmd_build, eval=cmd_eval,
+              compare=cmd_compare).get(cmd)
     if not fn:
         print(__doc__); sys.exit(1)
     fn(sys.argv[2:])
