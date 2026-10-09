@@ -539,6 +539,17 @@ def final_entries(m, rv):
         if not e['word'] or ' ' in e['word'] or not e['meaning'].strip():
             errs.append(f'不满足导入限制：{e}')
     errs += pos_tail_misses(m, rv)
+    # 拼写校验①：两路识别不一致的候选必须在 fix 里写明 word，不许原样收（Sonnet 试跑把 empire'empa 原样收了）
+    for c in m['candidates']:
+        disagree = c['word_full'] and c['word_strip'] and c['word_full'] != c['word_strip']
+        if disagree and (c['id'] in rv.get('ok', []) or ('word' not in rv.get('fix', {}).get(str(c['id']), {'word': 1}))):
+            errs.append(f'#{c["id"]} 两路识别不一致（整页={c["word_full"]} 条带={c["word_strip"]}），必须对原图在 fix 里写明 word')
+    # 拼写校验②：最终词过不了拼写检查的，必须对原图确认后登记 spell_confirmed
+    words = [e['word'] for e in out if e['word']]
+    sp = spell_check(words)
+    bad = sorted({w for w in words if not sp[w]} - set(rv.get('spell_confirmed', [])))
+    if bad:
+        errs.append(f'拼写检查不过：{bad}（对原图确认无误的登记到 spell_confirmed，有错就改 fix）')
     return out, errs
 
 

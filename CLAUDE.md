@@ -40,7 +40,7 @@
 - **流程**（每批 10 页，**每批开一个新会话**，节省 token）：
   1. `python -I ocr_candidates.py extract <起页> <止页>`（放后台跑，约 40 秒/页）：机器提取。整页 200dpi 和 300dpi 重叠条带各识别一次，同位置比对；做拼写检查；对残余墨迹、未匹配的青色词头、字符过稀报警。每页输出到 `候选v2/work/pNNNN/`（`ocr.json` 缓存、`machine.json`、复核条带图 `rv_1~4.jpg`）。已有 `review.json` 的页会自动跳过（重做后处理会改变候选编号，导致裁决错位）。同一时间只跑一个 extract 进程（多个进程会同时写拼写缓存）
   2. Claude 逐页复核（见验收标准第 2 条）：`python -I ocr_candidates.py show <页>` 看候选清单和报警，Read 该页 `rv_1~4.jpg` 四段条带图逐段看（先找条带图里没画线的漏词，再核对每个编号的拼写和释义）；拿不准的用 `python -I ocr_candidates.py crop <页> <y0> <y1> [x0 x1] [dpi]` 放大原图（坐标是 200dpi 转正后的像素）。裁决写入 `候选v2/work/pNNNN/review.json`
-  3. `python -I ocr_candidates.py build <起页> <止页>`：校验每个候选、报警、条带都有处置，以及同一行有没有漏并的词性；通过后输出 `候选v2/候选_pA-B.json`（导入用）和 `候选v2/待核_pA-B.md`（复核记录、未决事项）。有 undecided 的批次状态是「未完成」，要把问题整理给用户裁决，裁决后改 review.json 再 build
+  3. `python -I ocr_candidates.py build <起页> <止页>`：校验每个候选、报警、条带都有处置，以及同一行有没有漏并的词性；还有两道拼写校验：①最终收录的词必须过 Windows 拼写检查，过不了的（旧拼法、英式拼法、词缀、专有名词等）要看原图确认后登记到 `spell_confirmed`；②两路识别结果不一致的候选不许放进 ok，必须放进 fix 并写明 `word`（逼着对原图选定拼写）。通过后输出 `候选v2/候选_pA-B.json`（导入用）和 `候选v2/待核_pA-B.md`（复核记录、未决事项）。有 undecided 的批次状态是「未完成」，要把问题整理给用户裁决，裁决后改 review.json 再 build
 - **review.json 格式**（每个候选编号必须在 ok / fix / reject / undecided 里恰好出现一次，否则 build 报错）：
   ```
   {"page": 94,
@@ -52,6 +52,7 @@
    "added": [{"word": "…", "meaning": "…", "after": 2, "note": "…"}],   // 机器漏掉、复核补上，after 是排在哪个编号后
    "alarms": {"A1": "结论"},                            // 每个报警都要写结论
    "meaning_checked": [7],                              // 可选：build 报“同行词性没并进释义”但确认不属于该词时登记
+   "spell_confirmed": ["embassador", "-ery"],           // 可选：过不了拼写检查、但已对原图确认拼写无误的最终词
    "notes": ""}
   ```
 - **复核要点**（试跑总结）：
