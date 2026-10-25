@@ -388,7 +388,7 @@ body{
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
     <button class="btn btn-o" onclick="openHomePull()">☁️ 从远端拉取</button>
   </div>
-  <p class="home-ver">v 2.3.1</p>
+  <p class="home-ver">v 2.5.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -603,7 +603,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.3.1</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.5.0</div>
         </div>
       </div>
     </div>
@@ -670,7 +670,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.3.1';
+const CACHE='wr-2.5.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -734,7 +734,7 @@ const S={
   dict:[],          // 默写库词条 {id,word,week,meaning,addedAt}
   dictWeek:1,       // 标记默写词时默认周数
   dictSel:new Set(),// 默写库列表多选
-  dictFilter:'all', // 默写库周数筛选
+  dictFilter:'all', // 默写库筛选；0 为高考易错词
   dictSess:null,    // 默写复习会话
   dictAddWord:null, // 待确认加入默写库的单词（配合弹窗）
   dictImportBuf:null, // OCR候选导入：待审核的条目数组 {word,meaning,page,include}
@@ -1695,6 +1695,7 @@ function addDictWord(word){
     <div class="mb12">
       <div class="dlbl">周数</div>
       <input type="number" min="1" class="inp" id="dictw-week-inp" value="${defWeek}">
+      <label class="f13" style="display:block;margin-top:9px"><input type="checkbox" id="dictw-gaokao-inp" ${S.dictFilter===0?'checked':''}> 加入高考易错词</label>
     </div>
     <div class="mb12">
       <div class="dlbl">释义（默写时显示的中文释义，可直接填生僻义）</div>
@@ -1709,16 +1710,16 @@ function addDictWord(word){
 
 function confirmAddDictWord(){
   const w=S.dictAddWord;if(!w)return;
-  const week=parseInt(document.getElementById('dictw-week-inp').value)||1;
+  const week=document.getElementById('dictw-gaokao-inp').checked?0:(parseInt(document.getElementById('dictw-week-inp').value)||1);
   const meaning=document.getElementById('dictw-meaning-inp').value.trim();
   if(!meaning){toast('请填写释义','err');return;}
   const _now=new Date().toISOString();
   S.dict.push({id:uid(),word:w,week,meaning,addedAt:_now,lastModified:_now});
-  S.dictWeek=week;
+  if(week)S.dictWeek=week;
   S.dictAddWord=null;
   saveDict();
   closeModal();
-  toast(`已添加「${w}」到第 ${week} 周默写库`,'ok');
+  toast(`已添加「${w}」到${dictWeekLabel(week)}`,'ok');
 }
 
 async function batchGen(){
@@ -2079,6 +2080,7 @@ function goAddDict(){
   goView('add');
 }
 
+function dictWeekLabel(week){return week===0?'高考易错词':`第${week}周`;}
 function filteredDict(){
   return S.dictFilter==='all'?S.dict:S.dict.filter(w=>w.week===S.dictFilter);
 }
@@ -2089,23 +2091,17 @@ function renderDictScreen(){
   const importBanner=b?`
     <div class="card mb12" style="background:#FEF3C7">
       <div class="row rbet">
-        <span class="f13">刚导入了 ${b.count} 个词到第${b.week}周</span>
+        <span class="f13">刚导入了 ${b.count} 个词到${dictWeekLabel(b.week)}</span>
         <div class="row g8">
           <button class="btn btn-sm btn-o" onclick="undoDictImportBatch()">↩ 撤销本次导入</button>
           <button class="icon-btn" onclick="dismissDictImportBatch()">✕</button>
         </div>
       </div>
     </div>`:'';
-  if(S.dict.length===0){
-    el.innerHTML=`${importBanner}<div class="empty"><div class="eico">📝</div>
-      <div class="etit">默写库是空的</div>
-      <div class="muted f13">点击右上角「去标记生词」，在PDF里选中蓝色单词添加</div></div>`;
-    hideDBT();return;
-  }
-  const weeks=[...new Set(S.dict.map(w=>w.week))].sort((a,b)=>a-b);
+  const weeks=[...new Set(S.dict.map(w=>w.week).filter(w=>w!==0))].sort((a,b)=>a-b);
   const cnt={};weeks.forEach(w=>cnt[w]=S.dict.filter(x=>x.week===w).length);
-  const filt=['all',...weeks].map(f=>{
-    const lbl=f==='all'?`全部 (${S.dict.length})`:`第${f}周 (${cnt[f]})`;
+  const filt=['all',...weeks,0].map(f=>{
+    const lbl=f==='all'?`全部 (${S.dict.length})`:`${dictWeekLabel(f)} (${f===0?S.dict.filter(x=>x.week===0).length:cnt[f]})`;
     const fArg=f==='all'?"'all'":f;
     return `<button class="chip ${S.dictFilter===f?'on':''}" onclick="setDictF(${fArg})" oncontextmenu="return confirmDeleteDictWeek(event,${fArg})">${lbl}</button>`;
   }).join('');
@@ -2119,14 +2115,19 @@ function renderDictScreen(){
           <div class="wname">${esc(w.word)}</div>
           <div class="wzh">${esc(w.meaning)}</div>
         </div>
-        <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+        ${w.week===0&&w.mastered?'<span class="bdg" style="background:#D1FAE5;color:#065F46">已掌握</span>':''}
+        <span class="bdg" style="background:var(--cpbg);color:var(--cp)">${dictWeekLabel(w.week)}</span>
       </div>`).join('');
   const weekWrongN=S.dictFilter!=='all'?(S.dictWeekWrong[S.dictFilter]||[]).length:0;
+  const unmasteredN=S.dict.filter(w=>w.week===0&&!w.mastered).length;
   el.innerHTML=`${importBanner}<div class="chips">${filt}</div>
     <div class="card mt12 mb12">
-      <div class="bold f14 mb8">${S.dictFilter==='all'?'全部':'第'+S.dictFilter+'周'} 共 ${items.length} 词</div>
-      <button class="btn btn-p btn-full" ${items.length?'':'disabled'} onclick="startDictReview()">开始复习</button>
-      ${weekWrongN?`<button class="btn btn-o btn-full mt8" onclick="startDictWeekWrongRetry(${S.dictFilter})">🔁 错题重练 (${weekWrongN})</button>`:''}
+      <div class="bold f14 mb8">${S.dictFilter==='all'?'全部':dictWeekLabel(S.dictFilter)} 共 ${items.length} 词${S.dictFilter===0?` · 已掌握 ${items.length-unmasteredN}`:''}</div>
+      ${S.dictFilter===0?`
+        <button class="btn btn-p btn-full" ${items.length?'':'disabled'} onclick="startDictReview()">练习全部 (${items.length})</button>
+        <button class="btn btn-o btn-full mt8" ${unmasteredN?'':'disabled'} onclick="startDictUnmasteredReview()">练习未掌握 (${unmasteredN})</button>`:`
+        <button class="btn btn-p btn-full" ${items.length?'':'disabled'} onclick="startDictReview()">开始复习</button>
+        ${weekWrongN?`<button class="btn btn-o btn-full mt8" onclick="startDictWeekWrongRetry(${S.dictFilter})">🔁 错题重练 (${weekWrongN})</button>`:''}`}
     </div>
     ${list}`;
   updateDBT();
@@ -2146,7 +2147,7 @@ function confirmDeleteDictWeek(ev,f){
   ev.preventDefault();
   const n=f==='all'?S.dict.length:S.dict.filter(x=>x.week===f).length;
   if(n===0)return false;
-  const label=f==='all'?'全部':`第${f}周`;
+  const label=f==='all'?'全部':dictWeekLabel(f);
   openModal(`
     <div class="mtitle">🗑️ 删除${label}默写词</div>
     <p class="f13 muted mb16">确定删除${label}的 <strong>${n}</strong> 个词？此操作不可撤销。</p>
@@ -2211,11 +2212,12 @@ function showDictDetail(id){
   openModal(`
     <div class="dword">${esc(w.word)}</div>
     <div class="row rbet" style="align-items:center;margin-top:6px">
-      <span class="bdg" style="background:var(--cpbg);color:var(--cp)">第${w.week}周</span>
+      <span class="bdg" style="background:var(--cpbg);color:var(--cp)">${dictWeekLabel(w.week)}</span>
       <button class="btn btn-sm btn-o" onclick="editDictWeek('${id}')">修改周数</button>
     </div>
     <div class="divider"></div>
     <div class="dfield"><div class="dlbl">释义</div><div class="dval">${esc(w.meaning)}</div></div>
+    ${w.week===0?`<button class="btn btn-o btn-full mt12" data-dict-master-id="${w.id}" aria-pressed="${!!w.mastered}" onclick="toggleDictMastered('${w.id}')">${w.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
     <button class="btn btn-d btn-full mt12" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
 }
 
@@ -2227,7 +2229,8 @@ function editDictWeek(id){
     <div class="dword" style="font-size:22px;margin-bottom:12px">${esc(w.word)}</div>
     <div class="mb12">
       <div class="dlbl">新周数</div>
-      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${w.week}">
+      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${w.week||S.dictWeek}">
+      <label class="f13" style="display:block;margin-top:9px"><input type="checkbox" id="dictw-editgaokao-inp" ${w.week===0?'checked':''}> 高考易错词</label>
     </div>
     <div class="row g8">
       <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
@@ -2245,7 +2248,8 @@ function batchEditDictWeek(){
     <p class="f13 muted mb12">将选中的 <strong>${n}</strong> 个词改到第几周？</p>
     <div class="mb12">
       <div class="dlbl">新周数</div>
-      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${S.dictFilter!=='all'?S.dictFilter:''}">
+      <input type="number" min="1" class="inp" id="dictw-editweek-inp" value="${S.dictFilter==='all'?S.dictWeek:S.dictFilter||S.dictWeek}">
+      <label class="f13" style="display:block;margin-top:9px"><input type="checkbox" id="dictw-editgaokao-inp" ${S.dictFilter===0?'checked':''}> 高考易错词</label>
     </div>
     <div class="row g8">
       <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
@@ -2256,8 +2260,8 @@ function batchEditDictWeek(){
 
 function confirmEditDictWeek(){
   const ids=S.dictEditWeekIds;if(!ids||!ids.length)return;
-  const week=parseInt(document.getElementById('dictw-editweek-inp').value);
-  if(!week||week<1){toast('请输入有效的周数','err');return;}
+  const week=document.getElementById('dictw-editgaokao-inp').checked?0:parseInt(document.getElementById('dictw-editweek-inp').value);
+  if(week!==0&&(!week||week<1)){toast('请输入有效的周数','err');return;}
   ids.forEach(id=>{
     const w=S.dict.find(x=>x.id===id);if(!w)return;
     if(w.week===week)return;
@@ -2282,7 +2286,7 @@ function confirmEditDictWeek(){
   closeModal();
   if(S.dictFilter!=='all'&&!S.dict.some(x=>x.week===S.dictFilter))S.dictFilter='all';
   renderDictScreen();
-  toast(`已修改到第 ${week} 周`,'ok');
+  toast(`已修改到${dictWeekLabel(week)}`,'ok');
 }
 function delDictWord(id){
   S.dict=S.dict.filter(x=>x.id!==id);
@@ -2303,6 +2307,31 @@ function buildDictQs(words){
 
 function startDictReview(){
   startDictSession(filteredDict());
+}
+function startDictUnmasteredReview(){
+  const words=S.dict.filter(w=>w.week===0&&!w.mastered);
+  if(!words.length){toast('没有未掌握的高考易错词','err');return;}
+  startDictSession(words);
+}
+function toggleDictMastered(id){
+  const w=S.dict.find(x=>x.id===id);
+  if(!w||w.week!==0)return;
+  w.mastered=!w.mastered;
+  w.lastModified=new Date().toISOString();
+  saveDict();
+  document.querySelectorAll('[data-dict-master-id]').forEach(btn=>{
+    if(btn.dataset.dictMasterId===id){
+      btn.textContent=w.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握';
+      btn.setAttribute('aria-pressed',String(w.mastered));
+    }
+  });
+  renderDictScreen();
+  const retry=document.getElementById('dict-retry-unmastered');
+  if(retry){
+    const n=S.dict.filter(x=>x.week===0&&!x.mastered).length;
+    retry.disabled=n===0;
+    retry.textContent=`重练未掌握 (${n})`;
+  }
 }
 
 function startDictSelectedReview(){
@@ -2357,7 +2386,7 @@ function renderDictQ(){
         ${ses.idx+1} / ${ses.qs.length} &nbsp;·&nbsp; ✓ ${ses.correct} &nbsp;·&nbsp; ✗ ${ses.incorrect}
       </div>
       <div class="qcard">
-        <div class="qtype">第${q.word.week}周 · 根据释义拼写单词</div>
+        <div class="qtype">${dictWeekLabel(q.word.week)} · 根据释义拼写单词</div>
         <div class="qdisplay def">${esc(q.display)}</div>
         <div class="qprompt">拼写正确的英文单词</div>
         <div class="spell-area">
@@ -2367,6 +2396,7 @@ function renderDictQ(){
           <button class="btn btn-p btn-full" style="margin-top:9px" onclick="submitDictAns()">提交</button>
         </div>
         <div id="dqfb" class="fb"></div>
+        ${q.word.week===0?`<button id="dictmaster-btn" class="btn btn-o btn-full mt8 hidden" data-dict-master-id="${q.word.id}" aria-pressed="${!!q.word.mastered}" onclick="toggleDictMastered('${q.word.id}')">${q.word.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
       </div>
       <button id="dnxt-btn" class="btn btn-p btn-full hidden" onclick="dictNextQ()">
         ${ses.idx+1<ses.qs.length?'下一题 →':'查看结果 →'}
@@ -2389,6 +2419,7 @@ function submitDictAns(){
   const fb=document.getElementById('dqfb');fb.style.display='block';
   fb.className='fb '+(ok?'ok':'no');
   fb.innerHTML=ok?'✓ 正确！':`✗ 错误！正确拼写：<strong>${esc(q.answer)}</strong>`;
+  if(q.word.week===0)document.getElementById('dictmaster-btn').classList.remove('hidden');
   document.getElementById('dnxt-btn').classList.remove('hidden');
 }
 
@@ -2401,12 +2432,15 @@ function renderDictResult(){
   const pct=tot?Math.round(correct/tot*100):0;
   const emj=pct>=80?'🎉':pct>=60?'😊':'💪';
   const wrongWords=ses.records.filter(r=>!r.ok).map(r=>r.word);
+  const gaokaoOnly=ses.qs.every(q=>q.word.week===0);
+  const unmasteredN=S.dict.filter(w=>w.week===0&&!w.mastered).length;
   const rows=ses.records.map(r=>`
     <div class="tr-row">
       <span class="tr-tag ${r.ok?'tr-pass':'tr-fail'}">${r.ok?'✓':'✗'}</span>
       <div style="flex:1;min-width:0">
         <div class="f14 bold">${esc(r.word.word)}</div>
         <div class="f12 muted">${esc(r.word.meaning)}</div>
+        ${r.word.week===0?`<button class="btn btn-sm btn-o mt8" data-dict-master-id="${r.word.id}" aria-pressed="${!!r.word.mastered}" onclick="toggleDictMastered('${r.word.id}')">${r.word.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
       </div>
       ${r.ok?'':`<div class="f12" style="color:var(--ce);text-align:right">你写：${esc(r.yourAns)||'（空）'}</div>`}
     </div>`).join('');
@@ -2421,8 +2455,11 @@ function renderDictResult(){
     </div>
     <div class="slbl">逐题结果</div>
     ${rows}
-    ${wrongWords.length?`<button class="btn btn-p btn-full mt16 mb8" onclick="startDictSession(S.dictRetryWrongWords)">🔁 重练错题 (${wrongWords.length})</button>`:''}
-    <button class="btn ${wrongWords.length?'btn-o':'btn-p'} btn-full mb8" style="margin-top:${wrongWords.length?'0':'16px'}" onclick="startDictSession(S.dictRetryWords)">重新开始（全部）</button>
+    ${gaokaoOnly?`
+      <button class="btn btn-p btn-full mt16 mb8" onclick="startDictSession(S.dict.filter(w=>w.week===0))">重练全部</button>
+      <button id="dict-retry-unmastered" class="btn btn-o btn-full mb8" ${unmasteredN?'':'disabled'} onclick="startDictUnmasteredReview()">重练未掌握 (${unmasteredN})</button>`:`
+      ${wrongWords.length?`<button class="btn btn-p btn-full mt16 mb8" onclick="startDictSession(S.dictRetryWrongWords)">🔁 重练错题 (${wrongWords.length})</button>`:''}
+      <button class="btn ${wrongWords.length?'btn-o':'btn-p'} btn-full mb8" style="margin-top:${wrongWords.length?'0':'16px'}" onclick="startDictSession(S.dictRetryWords)">重新开始（全部）</button>`}
     <button class="btn btn-g btn-full" onclick="exitDictSession()">返回默写库</button>`;
   S.dictSess=null;
 }
@@ -2502,6 +2539,7 @@ function renderDictImportScreen(){
       </div>
       <div class="dlbl">导入到第几周</div>
       <input type="number" min="1" class="inp" id="dictimport-week-inp" value="${defWeek}">
+      <label class="f13" style="display:block;margin-top:9px"><input type="checkbox" id="dictimport-gaokao-inp" ${S.dictFilter===0?'checked':''}> 导入到高考易错词</label>
     </div>
     ${rows}
     <button class="btn btn-p btn-full mt12 mb8" onclick="confirmDictImport()">✅ 确认导入所选</button>
@@ -2554,7 +2592,7 @@ function confirmAddDictImportRow(){
 }
 
 function confirmDictImport(){
-  const week=parseInt(document.getElementById('dictimport-week-inp').value)||1;
+  const week=document.getElementById('dictimport-gaokao-inp').checked?0:(parseInt(document.getElementById('dictimport-week-inp').value)||1);
   const now=new Date().toISOString();
   let added=0,skipped=0;
   const addedIds=[];
