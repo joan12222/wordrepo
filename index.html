@@ -388,7 +388,7 @@ body{
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
     <button class="btn btn-o" onclick="openHomePull()">☁️ 从远端拉取</button>
   </div>
-  <p class="home-ver">v 2.5.0</p>
+  <p class="home-ver">v 2.5.1</p>
 </div>
 
 <!-- MAIN APP -->
@@ -603,7 +603,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.5.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.5.1</div>
         </div>
       </div>
     </div>
@@ -670,7 +670,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.5.0';
+const CACHE='wr-2.5.1';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -2516,7 +2516,7 @@ function renderDictImportScreen(){
   const rows=buf.length===0
     ?`<div class="empty"><div class="eico">📥</div><div class="etit">还没有词条</div><div class="muted f13">点右下角「➕」自己填</div></div>`
     :buf.map((it,i)=>`
-    <div class="wi" style="align-items:flex-start">
+    <div class="wi ${it.include?'sel':''}" style="align-items:flex-start">
       <div class="wchk" style="margin-top:10px" onclick="toggleDictImportItem(${i})">${it.include?'✓':''}</div>
       <div class="winfo" style="cursor:default">
         <input class="inp mb4" id="dictimport-word-${i}" style="font-weight:600" value="${esc(it.word)}"
