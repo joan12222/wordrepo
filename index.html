@@ -39,6 +39,7 @@ body{
 .home-sub{font-size:14px;color:var(--cm);line-height:1.7;margin-bottom:32px}
 .home-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
 .home-ver{margin-top:24px;font-size:12px;font-weight:600;color:var(--cp);letter-spacing:.5px}
+.nonadmin .admin-only{display:none!important}
 
 /* MAIN APP */
 #main{position:absolute;inset:0;display:none;flex-direction:column}
@@ -388,7 +389,7 @@ body{
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
     <button class="btn btn-o" onclick="openHomePull()">☁️ 从远端拉取</button>
   </div>
-  <p class="home-ver">v 2.5.2</p>
+  <p class="home-ver">v 2.6.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -421,7 +422,7 @@ body{
       <!-- 添加目标：普通生词本 / 默写库 -->
       <div class="mtog mb12">
         <button class="mtog-btn on" id="addmode-vocab-btn" onclick="setAddMode('vocab')">📚 普通生词</button>
-        <button class="mtog-btn" id="addmode-dict-btn" onclick="setAddMode('dict')">📝 默写标记</button>
+        <button class="mtog-btn admin-only" id="addmode-dict-btn" onclick="setAddMode('dict')">📝 默写标记</button>
       </div>
 
       <!-- 手动录入单词/词组（始终可见） -->
@@ -522,8 +523,8 @@ body{
       <span class="hdr-title">📝 默写库</span>
       <div class="row g8">
         <button class="btn btn-sm btn-g" onclick="selAllDict()">全选</button>
-        <button class="btn btn-sm btn-g" onclick="triggerDictImport()">导入候选</button>
-        <button class="btn btn-sm btn-g" onclick="goAddDict()">去标记生词</button>
+        <button class="btn btn-sm btn-g admin-only" onclick="triggerDictImport()">导入候选</button>
+        <button class="btn btn-sm btn-g admin-only" onclick="goAddDict()">去标记生词</button>
       </div>
     </div>
     <input type="file" id="dict-import-input" accept=".json" style="display:none" onchange="onDictImportFile(event)">
@@ -532,8 +533,8 @@ body{
       <span id="dselTxt" class="f14 bold">已选 0 个</span>
       <div class="row g8">
         <button class="btn btn-sm" style="background:rgba(255,255,255,.25);color:#fff" onclick="startDictSelectedReview()">▶ 练习</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="batchEditDictWeek()">改周数</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDeleteDict()">删除</button>
+        <button class="btn btn-sm admin-only" style="background:rgba(255,255,255,.15);color:#fff" onclick="batchEditDictWeek()">改周数</button>
+        <button class="btn btn-sm admin-only" style="background:rgba(255,255,255,.2);color:#FCA5A5" onclick="batchDeleteDict()">删除</button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="clearDictSel()">取消</button>
       </div>
     </div>
@@ -575,12 +576,14 @@ body{
       <div class="mb12">
         <span class="slbl">Gitee 云同步</span>
         <div class="card">
-          <p class="f13 muted mb8">生词本和默写库自动同步至 Gitee 私有仓库，多设备共用。</p>
+          <p class="f13 muted mb8">生词本和默写进度按用户名分开同步，默写词表全员共享、仅管理员可修改。</p>
           <input type="text" class="inp mb8" id="gitee-owner-inp" placeholder="仓库路径，如 joan1222/ciji">
           <input type="password" class="inp mb8" id="gitee-token-inp" placeholder="Personal Access Token">
+          <input type="text" class="inp mb8" id="gitee-user-inp" placeholder="用户名（字母、数字、_ 或 -），如 elaine">
+          <label class="f13 mb8" style="display:block"><input type="checkbox" id="gitee-admin-inp"> 我是词表管理员</label>
           <div class="row g8 mb8">
             <button class="btn btn-p" style="flex:1" onclick="saveGiteeConf()">保存配置</button>
-            <button class="btn btn-o" style="flex:1" onclick="giteePull(true)">立即同步</button>
+            <button class="btn btn-o" style="flex:1" onclick="syncAll(null,true)">立即同步</button>
           </div>
           <div id="gitee-status" class="f12 muted"></div>
         </div>
@@ -603,7 +606,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.5.2</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.6.0</div>
         </div>
       </div>
     </div>
@@ -670,7 +673,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.5.2';
+const CACHE='wr-2.6.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -704,11 +707,17 @@ const PROFS=['完全不会','掌握中','已掌握','已存档'];
 const PCLS=['b0','b1','b2','b3'];
 const SK_VOCAB='wr_vocab';
 const SK_DICT='wr_dict';
-const SK_DICT_WRONG='wr_dictWeekWrong';
+const SK_DICT_WRONG='wr_dictWeekWrong'; // v2.6.0 前的错题池，仅迁移时读取
+const SK_VOCAB_DEL='wr_vocab_del';
+const SK_DICT_DEL='wr_dict_del';
+const SK_PROGRESS='wr_progress';
+const SK_USER='wr_user';
+const SK_DIRTY='wr_dirty';
 const SK_KEY='wr_apikey';
 const SK_GITEE_TOKEN='wr_gitee_token';
 const SK_GITEE_OWNER='wr_gitee_owner';  // 存 owner/repo 完整路径
-const GITEE_FILE='vocab.json';
+const GITEE_LEGACY_FILE='vocab.json';   // v2.6.0 前的单文件格式，只读不写，作为备份保留
+const LEGACY_AT='1970-01-01T00:00:00.000Z'; // 旧错题池没有时间戳，迁移时用最早时间，任何新作答都能覆盖
 
 /* ═══════════════════════════════
    STATE
@@ -723,7 +732,11 @@ const S={
   giteeToken:'',
   giteeOwner:'',  // 用户名
   giteeRepo:'',   // 仓库名
-  giteeSha:'',    // 当前远端文件 SHA，PUT 时需要
+  user:{name:'',admin:false,migrated:false}, // 本设备用户；migrated=已决定旧数据归属
+  vocabDel:{},    // 生词本删除记录 {小写word: 删除时间}
+  dictDel:{},     // 默写词表删除记录 {id: 删除时间}
+  progress:{mastered:{},wrong:{}}, // 个人默写进度 {id:{v:bool,at:时间}}
+  dirty:{vocab:false,dict:false,progress:false}, // 尚未推送到 Gitee 的文件
   rvSess:null,
   sel:new Set(),    // selected word IDs
   vFilter:'all',    // vocab screen filter
@@ -742,7 +755,6 @@ const S={
   dictLastImportBatch:null, // 最近一次"确认导入所选"的结果 {ids,count,week}，可整批撤销
   dictRetryWords:null,      // 结果页"重新开始"用：这一轮全部的词
   dictRetryWrongWords:null, // 结果页"重练错题"用：这一轮答错的词
-  dictWeekWrong:{},         // 按周累积的错题词ID池 {week:[id,...]}，跨多轮复习（如一周分几次5面）累加，答对后自动移出
 };
 
 /* ═══════════════════════════════
@@ -751,32 +763,80 @@ const S={
 function loadVocab(){
   try{return JSON.parse(localStorage.getItem(SK_VOCAB))||null;}catch{return null;}
 }
+function loadJSON(key,def){
+  try{return JSON.parse(localStorage.getItem(key))??def;}catch{return def;}
+}
 let _pushTimer=null;
 function scheduleGiteePush(){
-  if(S.giteeToken&&S.giteeOwner){
+  if(syncReady()){
     clearTimeout(_pushTimer);
-    _pushTimer=setTimeout(giteePush,3000);
+    _pushTimer=setTimeout(()=>syncAll(dirtyKinds(),false),3000);
   }
 }
-function saveVocab(){
+function markDirty(kind){
+  S.dirty[kind]=true;
+  localStorage.setItem(SK_DIRTY,JSON.stringify(S.dirty));
+  if(syncReady())setGiteeStatus('有未同步改动');
+  scheduleGiteePush();
+}
+// write* 只写本地；save* 写本地并标记待推送
+function writeVocab(){
   localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
-  scheduleGiteePush();
+  localStorage.setItem(SK_VOCAB_DEL,JSON.stringify(S.vocabDel));
 }
+function saveVocab(){writeVocab();markDirty('vocab');}
 
-function loadDict(){
-  try{return JSON.parse(localStorage.getItem(SK_DICT))||[];}catch{return[];}
-}
-function saveDict(){
+function loadDict(){return loadJSON(SK_DICT,[]);}
+function writeDict(){
   localStorage.setItem(SK_DICT,JSON.stringify(S.dict));
-  scheduleGiteePush();
+  localStorage.setItem(SK_DICT_DEL,JSON.stringify(S.dictDel));
+}
+function saveDict(){writeDict();if(isAdmin())markDirty('dict');}
+
+function writeProgress(){localStorage.setItem(SK_PROGRESS,JSON.stringify(S.progress));}
+function saveProgress(){writeProgress();markDirty('progress');}
+
+function saveUser(){localStorage.setItem(SK_USER,JSON.stringify(S.user));}
+// 没填用户名的设备视为单人本地使用，保留全部编辑权限
+function isAdmin(){return !S.user.name||S.user.admin;}
+function applyRoleUI(){document.body.classList.toggle('nonadmin',!isAdmin());}
+
+function isMastered(id){return !!S.progress.mastered[id]?.v;}
+function setMastered(id,v){S.progress.mastered[id]={v,at:new Date().toISOString()};saveProgress();}
+function isWrong(id){return !!S.progress.wrong[id]?.v;}
+function weekWrongWords(week){return S.dict.filter(w=>w.week===week&&isWrong(w.id));}
+
+// v2.6.0 前掌握标记存在词条上、错题池按周存 id；首次启动时转成个人进度（只动本机数据）
+function migrateLocalProgress(){
+  if(localStorage.getItem(SK_PROGRESS)!==null)return;
+  const p={mastered:{},wrong:{}};
+  S.dict.forEach(w=>{
+    if('mastered' in w){
+      if(w.mastered)p.mastered[w.id]={v:true,at:w.lastModified||w.addedAt||LEGACY_AT};
+      delete w.mastered;
+    }
+  });
+  const oldWrong=loadJSON(SK_DICT_WRONG,{});
+  Object.values(oldWrong).forEach(ids=>(ids||[]).forEach(id=>{p.wrong[id]={v:true,at:LEGACY_AT};}));
+  S.progress=p;
+  writeDict();writeProgress();
 }
 
-function loadDictWeekWrong(){
-  try{return JSON.parse(localStorage.getItem(SK_DICT_WRONG))||{};}catch{return{};}
+// 删除了默写词后，清掉这些词的个人进度
+function pruneProgress(){
+  ['mastered','wrong'].forEach(k=>{
+    Object.keys(S.progress[k]).forEach(id=>{if(S.dictDel[id])delete S.progress[k][id];});
+  });
 }
-function saveDictWeekWrong(){
-  localStorage.setItem(SK_DICT_WRONG,JSON.stringify(S.dictWeekWrong));
-  scheduleGiteePush();
+function tombstoneDict(ids){
+  const now=new Date().toISOString();
+  ids.forEach(id=>{S.dictDel[id]=now;});
+  pruneProgress();
+  saveProgress();
+}
+function tombstoneVocab(words){
+  const now=new Date().toISOString();
+  words.forEach(w=>{if(w&&w.word)S.vocabDel[w.word.toLowerCase()]=now;});
 }
 
 /* ═══════════════════════════════
@@ -793,8 +853,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(_gr.includes('/')){const p=_gr.split('/');S.giteeOwner=p[0];S.giteeRepo=p[1];}
   document.getElementById('gitee-owner-inp').value=_gr;
   document.getElementById('gitee-token-inp').value=S.giteeToken;
+  S.user={...S.user,...loadJSON(SK_USER,{})};
+  document.getElementById('gitee-user-inp').value=S.user.name;
+  document.getElementById('gitee-admin-inp').checked=!!S.user.admin;
+  applyRoleUI();
   S.dict=loadDict();
-  S.dictWeekWrong=loadDictWeekWrong();
+  S.dictDel=loadJSON(SK_DICT_DEL,{});
+  S.vocabDel=loadJSON(SK_VOCAB_DEL,{});
+  S.progress={mastered:{},wrong:{},...loadJSON(SK_PROGRESS,{})};
+  S.dirty={...S.dirty,...loadJSON(SK_DIRTY,{})};
+  migrateLocalProgress();
+  document.addEventListener('visibilitychange',onVisibilityChange);
 
   const saved=loadVocab();
   if(saved!==null){
@@ -804,7 +873,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(w.irregular&&typeof w.irregular!=='string')w.irregular=JSON.stringify(w.irregular);
     });
     showMain();
-    if(S.giteeToken&&S.giteeOwner)giteePull(false);
+    syncAll(null,false); // 未配置 Gitee 时直接返回；缺用户名时在状态栏提示
   }
   // else: stay on home screen
   setupPhraseSelect();
@@ -828,6 +897,11 @@ function openHomePull(){
       <div class="dlbl">Personal Access Token</div>
       <input class="inp" type="password" id="home-gitee-token-inp" placeholder="Personal Access Token">
     </div>
+    <div class="mb12">
+      <div class="dlbl">用户名</div>
+      <input class="inp" id="home-gitee-user-inp" placeholder="字母、数字、下划线或短横线，如 elaine">
+      <label class="f13" style="display:block;margin-top:9px"><input type="checkbox" id="home-gitee-admin-inp"> 我是词表管理员</label>
+    </div>
     <div class="row g8">
       <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
       <button class="btn btn-p" style="flex:1" onclick="confirmHomePull()">拉取</button>
@@ -836,17 +910,15 @@ function openHomePull(){
 async function confirmHomePull(){
   const repo=document.getElementById('home-gitee-owner-inp').value.trim();
   const token=document.getElementById('home-gitee-token-inp').value.trim();
-  if(!repo||!token){toast('请填写仓库路径和 Token','err');return;}
-  if(!repo.includes('/')){toast('仓库路径格式应为 用户名/仓库名','err');return;}
-  const parts=repo.split('/');
-  S.giteeOwner=parts[0].trim();S.giteeRepo=parts[1].trim();S.giteeToken=token;
-  localStorage.setItem(SK_GITEE_OWNER,repo);
-  localStorage.setItem(SK_GITEE_TOKEN,token);
-  document.getElementById('gitee-owner-inp').value=repo;
-  document.getElementById('gitee-token-inp').value=token;
+  const name=document.getElementById('home-gitee-user-inp').value.trim();
+  const admin=document.getElementById('home-gitee-admin-inp').checked;
+  if(!applyGiteeConf(repo,token,name,admin))return;
   closeModal();
-  const ok=await giteePull(true);
-  if(ok)showMain();
+  const ok=await syncAll(null,true);
+  if(ok){
+    if(loadVocab()===null)writeVocab();
+    showMain();
+  }
 }
 function showMain(){
   document.getElementById('s-home').style.display='none';
@@ -978,6 +1050,7 @@ function batchDelete(){
 }
 
 function doBatchDelete(){
+  tombstoneVocab(S.vocab.filter(x=>S.sel.has(x.id)));
   S.vocab=S.vocab.filter(x=>!S.sel.has(x.id));
   saveVocab();S.sel.clear();closeModal();renderVocab();
   toast('已删除所选单词','ok');
@@ -1018,6 +1091,7 @@ function setWP(id,pi){
 }
 
 function delWord(id){
+  tombstoneVocab(S.vocab.filter(x=>x.id===id));
   S.vocab=S.vocab.filter(x=>x.id!==id);
   S.sel.delete(id);saveVocab();renderVocab();
   toast('单词已删除');
@@ -1673,6 +1747,7 @@ function addSelectedPhrase(){
    添加目标切换：普通生词 / 默写库
 ═══════════════════════════════ */
 function setAddMode(mode){
+  if(mode==='dict'&&!isAdmin())return;
   S.addMode=mode;
   document.getElementById('addmode-vocab-btn').classList.toggle('on',mode==='vocab');
   document.getElementById('addmode-dict-btn').classList.toggle('on',mode==='dict');
@@ -2076,6 +2151,7 @@ function renderSumm(){
    默写库（教材周默写）
 ═══════════════════════════════ */
 function goAddDict(){
+  if(!isAdmin())return;
   setAddMode('dict');
   goView('add');
 }
@@ -2115,11 +2191,11 @@ function renderDictScreen(){
           <div class="wname">${esc(w.word)}</div>
           <div class="wzh">${esc(w.meaning)}</div>
         </div>
-        ${w.week===0&&w.mastered?'<span class="bdg" style="background:#D1FAE5;color:#065F46">已掌握</span>':''}
+        ${w.week===0&&isMastered(w.id)?'<span class="bdg" style="background:#D1FAE5;color:#065F46">已掌握</span>':''}
         <span class="bdg" style="background:var(--cpbg);color:var(--cp)">${dictWeekLabel(w.week)}</span>
       </div>`).join('');
-  const weekWrongN=S.dictFilter!=='all'?(S.dictWeekWrong[S.dictFilter]||[]).length:0;
-  const unmasteredN=S.dict.filter(w=>w.week===0&&!w.mastered).length;
+  const weekWrongN=S.dictFilter!=='all'?weekWrongWords(S.dictFilter).length:0;
+  const unmasteredN=S.dict.filter(w=>w.week===0&&!isMastered(w.id)).length;
   el.innerHTML=`${importBanner}<div class="chips">${filt}</div>
     <div class="card mt12 mb12">
       <div class="bold f14 mb8">${S.dictFilter==='all'?'全部':dictWeekLabel(S.dictFilter)} 共 ${items.length} 词${S.dictFilter===0?` · 已掌握 ${items.length-unmasteredN}`:''}</div>
@@ -2145,6 +2221,7 @@ function selAllDict(){
 
 function confirmDeleteDictWeek(ev,f){
   ev.preventDefault();
+  if(!isAdmin())return false;
   const n=f==='all'?S.dict.length:S.dict.filter(x=>x.week===f).length;
   if(n===0)return false;
   const label=f==='all'?'全部':dictWeekLabel(f);
@@ -2158,21 +2235,12 @@ function confirmDeleteDictWeek(ev,f){
   return false;
 }
 function doDeleteDictWeek(f){
+  tombstoneDict(S.dict.filter(x=>f==='all'||x.week===f).map(x=>x.id));
   S.dict=f==='all'?[]:S.dict.filter(x=>x.week!==f);
   saveDict();S.dictSel.clear();closeModal();
   if(S.dictFilter===f&&f!=='all')S.dictFilter='all';
-  pruneDictWeekWrong();
   renderDictScreen();
   toast('已删除','ok');
-}
-
-function pruneDictWeekWrong(){
-  const ids=new Set(S.dict.map(w=>w.id));
-  Object.keys(S.dictWeekWrong).forEach(wk=>{
-    S.dictWeekWrong[wk]=S.dictWeekWrong[wk].filter(id=>ids.has(id));
-    if(S.dictWeekWrong[wk].length===0)delete S.dictWeekWrong[wk];
-  });
-  saveDictWeekWrong();
 }
 
 function toggleDictSel(id){
@@ -2190,6 +2258,7 @@ function updateDBT(){
 function hideDBT(){document.getElementById('dbtoolbar').style.display='none';}
 
 function batchDeleteDict(){
+  if(!isAdmin())return;
   const n=S.dictSel.size;
   openModal(`
     <div class="mtitle">🗑️ 删除默写词</div>
@@ -2200,9 +2269,9 @@ function batchDeleteDict(){
     </div>`);
 }
 function doBatchDeleteDict(){
+  tombstoneDict([...S.dictSel]);
   S.dict=S.dict.filter(x=>!S.dictSel.has(x.id));
   saveDict();S.dictSel.clear();closeModal();
-  pruneDictWeekWrong();
   renderDictScreen();
   toast('已删除所选词','ok');
 }
@@ -2213,15 +2282,16 @@ function showDictDetail(id){
     <div class="dword">${esc(w.word)}</div>
     <div class="row rbet" style="align-items:center;margin-top:6px">
       <span class="bdg" style="background:var(--cpbg);color:var(--cp)">${dictWeekLabel(w.week)}</span>
-      <button class="btn btn-sm btn-o" onclick="editDictWeek('${id}')">修改周数</button>
+      <button class="btn btn-sm btn-o admin-only" onclick="editDictWeek('${id}')">修改周数</button>
     </div>
     <div class="divider"></div>
     <div class="dfield"><div class="dlbl">释义</div><div class="dval">${esc(w.meaning)}</div></div>
-    ${w.week===0?`<button class="btn btn-o btn-full mt12" data-dict-master-id="${w.id}" aria-pressed="${!!w.mastered}" onclick="toggleDictMastered('${w.id}')">${w.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
-    <button class="btn btn-d btn-full mt12" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
+    ${w.week===0?`<button class="btn btn-o btn-full mt12" data-dict-master-id="${w.id}" aria-pressed="${!!isMastered(w.id)}" onclick="toggleDictMastered('${w.id}')">${isMastered(w.id)?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
+    <button class="btn btn-d btn-full mt12 admin-only" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
 }
 
 function editDictWeek(id){
+  if(!isAdmin())return;
   const w=S.dict.find(x=>x.id===id);if(!w)return;
   S.dictEditWeekIds=[id];
   openModal(`
@@ -2240,6 +2310,7 @@ function editDictWeek(id){
 }
 
 function batchEditDictWeek(){
+  if(!isAdmin())return;
   const n=S.dictSel.size;
   if(!n)return;
   S.dictEditWeekIds=[...S.dictSel];
@@ -2267,20 +2338,8 @@ function confirmEditDictWeek(){
     if(w.week===week)return;
     w.week=week;
     w.lastModified=new Date().toISOString();
-    Object.keys(S.dictWeekWrong).forEach(wk=>{
-      const pool=S.dictWeekWrong[wk];
-      const i=pool.indexOf(id);
-      if(i===-1)return;
-      pool.splice(i,1);
-      if(Number(wk)!==week){
-        const np=S.dictWeekWrong[week]||(S.dictWeekWrong[week]=[]);
-        if(!np.includes(id))np.push(id);
-      }
-    });
   });
   saveDict();
-  pruneDictWeekWrong();
-  saveDictWeekWrong();
   S.dictEditWeekIds=null;
   S.dictSel.clear();
   closeModal();
@@ -2289,9 +2348,10 @@ function confirmEditDictWeek(){
   toast(`已修改到${dictWeekLabel(week)}`,'ok');
 }
 function delDictWord(id){
+  if(!isAdmin())return;
+  tombstoneDict([id]);
   S.dict=S.dict.filter(x=>x.id!==id);
   S.dictSel.delete(id);saveDict();
-  pruneDictWeekWrong();
   renderDictScreen();
   toast('已删除');
 }
@@ -2309,26 +2369,25 @@ function startDictReview(){
   startDictSession(filteredDict());
 }
 function startDictUnmasteredReview(){
-  const words=S.dict.filter(w=>w.week===0&&!w.mastered);
+  const words=S.dict.filter(w=>w.week===0&&!isMastered(w.id));
   if(!words.length){toast('没有未掌握的高考易错词','err');return;}
   startDictSession(words);
 }
 function toggleDictMastered(id){
   const w=S.dict.find(x=>x.id===id);
   if(!w||w.week!==0)return;
-  w.mastered=!w.mastered;
-  w.lastModified=new Date().toISOString();
-  saveDict();
+  const m=!isMastered(id);
+  setMastered(id,m);
   document.querySelectorAll('[data-dict-master-id]').forEach(btn=>{
     if(btn.dataset.dictMasterId===id){
-      btn.textContent=w.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握';
-      btn.setAttribute('aria-pressed',String(w.mastered));
+      btn.textContent=m?'✓ 已掌握 · 点击取消':'标记为已掌握';
+      btn.setAttribute('aria-pressed',String(m));
     }
   });
   renderDictScreen();
   const retry=document.getElementById('dict-retry-unmastered');
   if(retry){
-    const n=S.dict.filter(x=>x.week===0&&!x.mastered).length;
+    const n=S.dict.filter(x=>x.week===0&&!isMastered(x.id)).length;
     retry.disabled=n===0;
     retry.textContent=`重练未掌握 (${n})`;
   }
@@ -2341,8 +2400,7 @@ function startDictSelectedReview(){
 }
 
 function startDictWeekWrongRetry(week){
-  const ids=new Set(S.dictWeekWrong[week]||[]);
-  const words=S.dict.filter(w=>ids.has(w.id));
+  const words=weekWrongWords(week);
   if(!words.length){toast('这一周暂无累积错题','err');return;}
   startDictSession(words);
 }
@@ -2361,15 +2419,11 @@ function exitDictSession(){
   goView('dict');
 }
 
+// 每个作答过的词记下最近一次结果和时间，多设备合并时以较新的为准
 function commitDictWeekWrong(records){
-  records.forEach(r=>{
-    const wk=r.word.week;
-    const pool=S.dictWeekWrong[wk]||(S.dictWeekWrong[wk]=[]);
-    const i=pool.indexOf(r.word.id);
-    if(r.ok){if(i!==-1)pool.splice(i,1);}
-    else if(i===-1)pool.push(r.word.id);
-  });
-  saveDictWeekWrong();
+  const now=new Date().toISOString();
+  records.forEach(r=>{S.progress.wrong[r.word.id]={v:!r.ok,at:now};});
+  saveProgress();
 }
 
 function renderDictQ(){
@@ -2396,7 +2450,7 @@ function renderDictQ(){
           <button class="btn btn-p btn-full" style="margin-top:9px" onclick="submitDictAns()">提交</button>
         </div>
         <div id="dqfb" class="fb"></div>
-        ${q.word.week===0?`<button id="dictmaster-btn" class="btn btn-o btn-full mt8 hidden" data-dict-master-id="${q.word.id}" aria-pressed="${!!q.word.mastered}" onclick="toggleDictMastered('${q.word.id}')">${q.word.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
+        ${q.word.week===0?`<button id="dictmaster-btn" class="btn btn-o btn-full mt8 hidden" data-dict-master-id="${q.word.id}" aria-pressed="${!!isMastered(q.word.id)}" onclick="toggleDictMastered('${q.word.id}')">${isMastered(q.word.id)?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
       </div>
       <button id="dnxt-btn" class="btn btn-p btn-full hidden" onclick="dictNextQ()">
         ${ses.idx+1<ses.qs.length?'下一题 →':'查看结果 →'}
@@ -2433,14 +2487,14 @@ function renderDictResult(){
   const emj=pct>=80?'🎉':pct>=60?'😊':'💪';
   const wrongWords=ses.records.filter(r=>!r.ok).map(r=>r.word);
   const gaokaoOnly=ses.qs.every(q=>q.word.week===0);
-  const unmasteredN=S.dict.filter(w=>w.week===0&&!w.mastered).length;
+  const unmasteredN=S.dict.filter(w=>w.week===0&&!isMastered(w.id)).length;
   const rows=ses.records.map(r=>`
     <div class="tr-row">
       <span class="tr-tag ${r.ok?'tr-pass':'tr-fail'}">${r.ok?'✓':'✗'}</span>
       <div style="flex:1;min-width:0">
         <div class="f14 bold">${esc(r.word.word)}</div>
         <div class="f12 muted">${esc(r.word.meaning)}</div>
-        ${r.word.week===0?`<button class="btn btn-sm btn-o mt8" data-dict-master-id="${r.word.id}" aria-pressed="${!!r.word.mastered}" onclick="toggleDictMastered('${r.word.id}')">${r.word.mastered?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
+        ${r.word.week===0?`<button class="btn btn-sm btn-o mt8" data-dict-master-id="${r.word.id}" aria-pressed="${!!isMastered(r.word.id)}" onclick="toggleDictMastered('${r.word.id}')">${isMastered(r.word.id)?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
       </div>
       ${r.ok?'':`<div class="f12" style="color:var(--ce);text-align:right">你写：${esc(r.yourAns)||'（空）'}</div>`}
     </div>`).join('');
@@ -2469,6 +2523,7 @@ function renderDictResult(){
    JSON 格式：[{"word":"abandon","meaning":"放弃；抛弃；遗弃","page":4}, ...]
 ═══════════════════════════════ */
 function triggerDictImport(){
+  if(!isAdmin())return;
   document.getElementById('dict-import-input').click();
 }
 
@@ -2624,6 +2679,7 @@ function confirmDictImport(){
 
 function undoDictImportBatch(){
   const b=S.dictLastImportBatch;if(!b)return;
+  tombstoneDict(b.ids);
   S.dict=S.dict.filter(w=>!b.ids.includes(w.id));
   saveDict();
   S.dictLastImportBatch=null;
@@ -3119,17 +3175,34 @@ function renderPwdResult(){
 /* ═══════════════════════════════
    GITEE 云同步
 ═══════════════════════════════ */
-function saveGiteeConf(){
-  const repo=document.getElementById('gitee-owner-inp').value.trim();
-  const token=document.getElementById('gitee-token-inp').value.trim();
-  if(!repo||!token){toast('请填写仓库路径和 Token','err');return;}
-  if(!repo.includes('/')){toast('仓库路径格式应为 用户名/仓库名','err');return;}
+function applyGiteeConf(repo,token,name,admin){
+  if(!repo||!token){toast('请填写仓库路径和 Token','err');return false;}
+  if(!repo.includes('/')){toast('仓库路径格式应为 用户名/仓库名','err');return false;}
+  if(!/^[A-Za-z0-9_-]+$/.test(name)){toast('用户名只能用字母、数字、下划线或短横线','err');return false;}
   const parts=repo.split('/');
   S.giteeOwner=parts[0].trim();S.giteeRepo=parts[1].trim();S.giteeToken=token;
   localStorage.setItem(SK_GITEE_OWNER,repo);
   localStorage.setItem(SK_GITEE_TOKEN,token);
+  // 换了用户名：本机已有的个人数据归属要重新确认
+  if(name!==S.user.name)S.user.migrated=false;
+  S.user.name=name;S.user.admin=admin;
+  saveUser();applyRoleUI();
+  if(!isAdmin()&&S.addMode==='dict')setAddMode('vocab');
+  document.getElementById('gitee-owner-inp').value=repo;
+  document.getElementById('gitee-token-inp').value=token;
+  document.getElementById('gitee-user-inp').value=name;
+  document.getElementById('gitee-admin-inp').checked=admin;
+  return true;
+}
+function saveGiteeConf(){
+  const ok=applyGiteeConf(
+    document.getElementById('gitee-owner-inp').value.trim(),
+    document.getElementById('gitee-token-inp').value.trim(),
+    document.getElementById('gitee-user-inp').value.trim(),
+    document.getElementById('gitee-admin-inp').checked);
+  if(!ok)return;
   toast('Gitee 配置已保存','ok');
-  giteePull(true);
+  syncAll(null,true);
 }
 
 function setGiteeStatus(msg,type=''){
@@ -3139,140 +3212,262 @@ function setGiteeStatus(msg,type=''){
   el.style.color=type==='ok'?'var(--cs)':type==='err'?'var(--ce)':'var(--cm)';
 }
 
-function mergeVocab(local,remote){
-  const map={};
-  remote.forEach(w=>{if(w.word)map[w.word.toLowerCase()]=w;});
-  local.forEach(w=>{
-    if(!w.word)return;
-    const key=w.word.toLowerCase();
-    if(!map[key]){map[key]=w;}
-    else{
-      const rm=map[key].lastModified||map[key].addedAt||'';
-      const lm=w.lastModified||w.addedAt||'';
-      if(lm>rm)map[key]=w;
-    }
+/* 同步模型（v2.6.0）：
+   dict.json                  共享默写词表 {items,deleted}，只有管理员写
+   users/<name>/vocab.json    个人生词本 {items,deleted}
+   users/<name>/progress.json 个人默写进度 {mastered,wrong}
+   vocab.json                 v2.6.0 前的单文件格式，只读（迁移来源 / 备份） */
+let _syncing=null,_syncAgain=null,_lastSync=0,_legacy,_localChanged=false,_dictUnpublished=false,_migrateLegacy=null;
+
+function syncReady(){return !!(S.giteeToken&&S.giteeOwner&&S.giteeRepo&&S.user.name);}
+function dirtyKinds(){return Object.keys(S.dirty).filter(k=>S.dirty[k]);}
+function persistDirty(){localStorage.setItem(SK_DIRTY,JSON.stringify(S.dirty));}
+function userPath(f){return `users/${S.user.name}/${f}`;}
+
+function giteeUrl(path){
+  const repo=`${encodeURIComponent(S.giteeOwner)}/${encodeURIComponent(S.giteeRepo)}`;
+  const p=path?'/contents/'+path.split('/').map(encodeURIComponent).join('/'):'';
+  return `https://gitee.com/api/v5/repos/${repo}${p}?access_token=${encodeURIComponent(S.giteeToken)}`;
+}
+// 文件不存在返回 null
+async function giteeGet(path){
+  const res=await fetch(giteeUrl(path));
+  if(res.status===404){
+    // 区分"仓库不存在"和"文件不存在"
+    const rr=await fetch(giteeUrl(''));
+    if(!rr.ok)throw new Error(`仓库未找到，请确认路径是否正确\n当前路径：${S.giteeOwner}/${S.giteeRepo}`);
+    return null;
+  }
+  if(!res.ok)throw new Error(`读取 ${path} 失败：HTTP ${res.status}`);
+  const json=await res.json();
+  if(Array.isArray(json))return null; // Gitee 对不存在的文件返回空数组
+  if(!json.content)throw new Error(`${path} 读取到的内容为空`);
+  return {sha:json.sha,data:JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))))};
+}
+async function giteePut(path,data,sha){
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const body={message:`sync ${path}`,content,branch:'master'};
+  if(sha)body.sha=sha;
+  const res=await fetch(giteeUrl(path),{
+    method:sha?'PUT':'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
   });
-  return Object.values(map);
+  if(!res.ok){
+    const detail=await res.text().catch(()=>'');
+    const err=new Error(`写入 ${path} 失败：HTTP ${res.status} ${detail.slice(0,120)}`);
+    err.isPut=true;throw err;
+  }
+}
+async function getLegacy(){
+  if(_legacy===undefined){
+    const d=(await giteeGet(GITEE_LEGACY_FILE))?.data;
+    _legacy=d?{
+      vocab:Array.isArray(d)?d:(d.vocab||[]),
+      dict:Array.isArray(d)?[]:(d.dict||[]),
+      wrong:Array.isArray(d)?{}:(d.dictWeekWrong||{})
+    }:null;
+  }
+  return _legacy;
 }
 
-function mergeDict(local,remote){
-  const map={};
-  remote.forEach(w=>{if(w.id)map[w.id]=w;});
-  local.forEach(w=>{
-    if(!w.id)return;
-    if(!map[w.id]){map[w.id]=w;}
-    else{
-      const rm=map[w.id].lastModified||map[w.id].addedAt||'';
-      const lm=w.lastModified||w.addedAt||'';
-      if(lm>rm)map[w.id]=w;
-    }
+/* ── 合并 ── */
+function itemTime(x){return x.lastModified||x.addedAt||'';}
+const vocabKey=w=>w&&w.word?w.word.toLowerCase():'';
+const dictKey=w=>w&&w.id?w.id:'';
+// 按键对齐取较新者；删除记录取较新时间，条目不比删除时间新的视为已删除
+function mergeList(local,localDel,remote,remoteDel,keyOf){
+  const del={...(remoteDel||{})};
+  Object.entries(localDel||{}).forEach(([k,t])=>{if(!del[k]||t>del[k])del[k]=t;});
+  const map=new Map();
+  (remote||[]).forEach(x=>{const k=keyOf(x);if(k)map.set(k,x);});
+  (local||[]).forEach(x=>{
+    const k=keyOf(x);if(!k)return;
+    const r=map.get(k);
+    if(!r||itemTime(x)>itemTime(r))map.set(k,x);
   });
-  return Object.values(map);
+  const items=[];
+  map.forEach((x,k)=>{
+    if(del[k]&&del[k]>=itemTime(x))return;
+    delete del[k]; // 删除后又重新添加的，删除记录作废
+    items.push(x);
+  });
+  return {items,deleted:del};
 }
-
-function mergeDictWeekWrong(local,remote){
-  const out={};
-  new Set([...Object.keys(local||{}),...Object.keys(remote||{})]).forEach(wk=>{
-    out[wk]=[...new Set([...(local[wk]||[]),...(remote[wk]||[])])];
-  });
+// 每个 id 取时间较新的作答 / 标记记录
+function mergeRecords(local,remote){
+  const out={...(remote||{})};
+  Object.entries(local||{}).forEach(([id,r])=>{if(!out[id]||(r.at||'')>(out[id].at||''))out[id]=r;});
   return out;
 }
+function legacyProgress(lg){
+  const p={mastered:{},wrong:{}};
+  (lg.dict||[]).forEach(w=>{if(w.mastered&&w.id)p.mastered[w.id]={v:true,at:w.lastModified||w.addedAt||LEGACY_AT};});
+  Object.values(lg.wrong||{}).forEach(ids=>(ids||[]).forEach(id=>{p.wrong[id]={v:true,at:LEGACY_AT};}));
+  return p;
+}
+function stripMastered(list){return (list||[]).map(({mastered,...w})=>w);}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
 
-function giteeBase(){return `https://gitee.com/api/v5/repos/${encodeURIComponent(S.giteeOwner)}/${encodeURIComponent(S.giteeRepo)}/contents/${GITEE_FILE}`;}
+/* ── 单个文件同步：读取 → 合并 → 写回本地 → 有差异才推送 ── */
+async function syncDict(){
+  const r=await giteeGet('dict.json');
+  const before={items:S.dict,deleted:S.dictDel};
+  if(!isAdmin()){
+    // 普通用户只读，以远端为准；词表未发布前保留本机词表
+    _dictUnpublished=!r;
+    if(!r)return;
+    S.dict=r.data.items||[];S.dictDel=r.data.deleted||{};
+  }else{
+    let remote=r?r.data:{items:[],deleted:{}};
+    if(!r){ // 首次发布：用旧 vocab.json 里的词表补齐，id 原样保留
+      const lg=await getLegacy();
+      if(lg)remote={items:stripMastered(lg.dict),deleted:{}};
+    }
+    const m=mergeList(S.dict,S.dictDel,remote.items,remote.deleted,dictKey);
+    S.dict=m.items;S.dictDel=m.deleted;
+    const payload={items:S.dict,deleted:S.dictDel};
+    if(!r||!same(payload,r.data))await giteePut('dict.json',payload,r?.sha);
+  }
+  if(!same(before,{items:S.dict,deleted:S.dictDel}))_localChanged=true;
+  writeDict();
+  pruneProgress();writeProgress();
+}
+async function syncVocab(){
+  const path=userPath('vocab.json');
+  const r=await giteeGet(path);
+  const before={items:S.vocab,deleted:S.vocabDel};
+  const m=mergeList(S.vocab,S.vocabDel,r?.data.items,r?.data.deleted,vocabKey);
+  S.vocab=m.items;S.vocabDel=m.deleted;
+  if(!same(before,m))_localChanged=true;
+  writeVocab();
+  const payload={items:S.vocab,deleted:S.vocabDel};
+  if(!r||!same(payload,r.data))await giteePut(path,payload,r?.sha);
+}
+async function syncProgress(){
+  const path=userPath('progress.json');
+  const r=await giteeGet(path);
+  const before=JSON.stringify(S.progress);
+  S.progress={
+    mastered:mergeRecords(S.progress.mastered,r?.data.mastered),
+    wrong:mergeRecords(S.progress.wrong,r?.data.wrong)
+  };
+  pruneProgress();
+  if(before!==JSON.stringify(S.progress))_localChanged=true;
+  writeProgress();
+  if(!r||!same(S.progress,r.data))await giteePut(path,S.progress,r?.sha);
+}
+async function syncKind(kind,fn){
+  S.dirty[kind]=false;persistDirty();
+  try{
+    // 写入失败（多为 SHA 已被其他设备更新）：重新读取合并后再试一次
+    try{await fn();}catch(e){if(!e.isPut)throw e;await fn();}
+  }catch(e){S.dirty[kind]=true;persistDirty();throw e;}
+}
 
-async function giteePull(showToast=true){
-  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return false;
+/* ── 旧数据归属：每个用户在每台设备上只确认一次 ── */
+function countV(m){return Object.values(m||{}).filter(r=>r.v).length;}
+async function ensureMigrated(){
+  if(S.user.migrated)return true;
+  const local={vocab:S.vocab.length,mastered:countV(S.progress.mastered),wrong:countV(S.progress.wrong)};
+  const hasLocal=local.vocab||local.mastered||local.wrong;
+  const own=await giteeGet(userPath('vocab.json'));
+  const lg=own?null:await getLegacy();
+  // 本机没有个人数据时：该用户已在别的设备上确认过（远端已有个人文件），或者根本没有旧数据，就不用问
+  if(!hasLocal&&(own||!lg)){S.user.migrated=true;saveUser();return true;}
+  _migrateLegacy=lg;
+  const lp=lg?legacyProgress(lg):null;
+  openModal(`
+    <div class="mtitle">📦 检测到旧版数据</div>
+    <p class="f13 mb8">本机：生词 ${local.vocab} 个，默写已掌握 ${local.mastered} 个，错题 ${local.wrong} 个</p>
+    ${lg?`<p class="f13 mb8">Gitee 旧文件 vocab.json：生词 ${lg.vocab.length} 个，默写已掌握 ${countV(lp.mastered)} 个，错题 ${countV(lp.wrong)} 个</p>`:''}
+    <p class="f13 muted mb16">这些生词和默写进度是否属于当前用户 <strong>${esc(S.user.name)}</strong>？选"否"则从空的个人数据开始（默写词表不受影响，旧文件保留在 Gitee 上）。</p>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="migrateChoice(false)">否，不是我的</button>
+      <button class="btn btn-p" style="flex:1" onclick="migrateChoice(true)">是，归入我名下</button>
+    </div>`);
+  document.getElementById('moverlay').onclick=null; // 必须二选一
+  return false;
+}
+function migrateChoice(yes){
+  closeModal();
+  const lg=_migrateLegacy;_migrateLegacy=null;
+  if(yes){
+    if(lg){
+      const m=mergeList(S.vocab,S.vocabDel,lg.vocab,{},vocabKey);
+      S.vocab=m.items;S.vocabDel=m.deleted;
+      const p=legacyProgress(lg);
+      S.progress={mastered:mergeRecords(S.progress.mastered,p.mastered),wrong:mergeRecords(S.progress.wrong,p.wrong)};
+    }
+  }else{
+    S.vocab=[];S.vocabDel={};S.progress={mastered:{},wrong:{}};
+  }
+  writeVocab();writeProgress();
+  S.user.migrated=true;saveUser();
+  S.dirty.vocab=S.dirty.progress=true;persistDirty();
+  renderVocab();renderDictScreen();
+  toast(yes?`旧数据已归入 ${S.user.name}`:'已从空的个人数据开始','ok');
+  syncAll(null,false);
+}
+
+/* ── 同步入口：kinds 为 null 表示全部，同一时间只跑一个 ── */
+function syncAll(kinds,showToast){
+  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return Promise.resolve(false);
+  if(!S.user.name){
+    setGiteeStatus('请在设置里填写用户名后再同步','err');
+    if(showToast)toast('请先填写用户名','err');
+    return Promise.resolve(false);
+  }
+  if(_syncing){
+    _syncAgain=_syncAgain||{full:false};
+    if(!kinds)_syncAgain.full=true;
+    return _syncing;
+  }
+  _syncing=(async()=>{
+    let ok=await runSync(kinds,showToast);
+    while(_syncAgain){
+      const k=_syncAgain.full?null:dirtyKinds();
+      _syncAgain=null;
+      ok=await runSync(k,false);
+    }
+    return ok;
+  })().finally(()=>{_syncing=null;});
+  return _syncing;
+}
+async function runSync(kinds,showToast){
+  const want=k=>!kinds||kinds.includes(k);
+  if(kinds&&!kinds.length)return true;
+  _legacy=undefined;_localChanged=false;
   setGiteeStatus('同步中…');
   try{
-    const url=`${giteeBase()}?access_token=${encodeURIComponent(S.giteeToken)}`;
-    const res=await fetch(url);
-    if(res.status===404){
-      const body=await res.text().catch(()=>'');
-      if(body.includes('Not Found')){
-        throw new Error(`仓库未找到，请确认路径是否正确\n当前路径：${S.giteeOwner}/${S.giteeRepo}`);
-      }
-      // 文件不存在，直接推送本地数据
-      setGiteeStatus('远端无数据，正在初始化…');
-      await giteePush();return true;
+    const notes=[];
+    if(want('dict'))await syncKind('dict',syncDict);
+    if(want('vocab')||want('progress')){
+      if(await ensureMigrated()){
+        if(want('vocab'))await syncKind('vocab',syncVocab);
+        if(want('progress'))await syncKind('progress',syncProgress);
+      }else notes.push('待确认旧数据归属');
     }
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const json=await res.json();
-    if(Array.isArray(json)||!json.content){
-      // 文件不存在（Gitee 返回空数组或无 content）
-      clearTimeout(_pushTimer);
-      setGiteeStatus('远端无数据，正在初始化…');
-      await giteePush();return true;
-    }
-    S.giteeSha=json.sha;
-    const remote=JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))));
-    const remoteVocab=Array.isArray(remote)?remote:(remote.vocab||[]);
-    const remoteDict=Array.isArray(remote)?[]:(remote.dict||[]);
-    const remoteDictWrong=Array.isArray(remote)?{}:(remote.dictWeekWrong||{});
-    S.vocab=mergeVocab(S.vocab,remoteVocab);
-    S.dict=mergeDict(S.dict,remoteDict);
-    S.dictWeekWrong=mergeDictWeekWrong(S.dictWeekWrong,remoteDictWrong);
-    localStorage.setItem(SK_VOCAB,JSON.stringify(S.vocab));
-    localStorage.setItem(SK_DICT,JSON.stringify(S.dict));
-    pruneDictWeekWrong();
-    renderVocab();
-    renderDictScreen();
+    if(_dictUnpublished&&!isAdmin())notes.push('管理员尚未发布词表');
+    _lastSync=Date.now();
+    if(_localChanged){renderVocab();renderDictScreen();}
     const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    setGiteeStatus(`上次同步 ${t}`,'ok');
+    setGiteeStatus(`上次同步 ${t}${notes.length?'（'+notes.join('，')+'）':''}`,notes.length?'':'ok');
     if(showToast)toast('同步成功','ok');
     return true;
   }catch(err){
     setGiteeStatus('同步失败：'+err.message,'err');
     if(showToast)toast('同步失败：'+err.message,'err');
+    console.error('sync',err);
     return false;
   }
 }
-
-async function giteePush(){
-  if(!S.giteeToken||!S.giteeOwner||!S.giteeRepo)return;
-  try{
-    const payload={vocab:S.vocab,dict:S.dict,dictWeekWrong:S.dictWeekWrong};
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload,null,2))));
-    const tk=encodeURIComponent(S.giteeToken);
-    const base=giteeBase();
-    // 若无 SHA，先尝试获取（文件可能已存在）
-    if(!S.giteeSha){
-      const r=await fetch(`${base}?access_token=${tk}`);
-      if(r.ok){const j=await r.json();S.giteeSha=j.sha;}
-    }
-    // 有 SHA → PUT 更新；无 SHA → POST 新建
-    const method=S.giteeSha?'PUT':'POST';
-    const body={message:'sync vocab',content,branch:'master'};
-    if(S.giteeSha)body.sha=S.giteeSha;
-    const res=await fetch(`${base}?access_token=${tk}`,{
-      method,headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
-    if(!res.ok){
-      const detail=await res.text().catch(()=>'');
-      // 文件已存在（并发 POST）→ 重新获取 SHA 改用 PUT
-      if(res.status===400&&detail.includes('already exists')){
-        const r2=await fetch(`${base}?access_token=${tk}`);
-        if(r2.ok){const j=await r2.json();if(j&&!Array.isArray(j))S.giteeSha=j.sha;}
-        if(S.giteeSha){
-          const res2=await fetch(`${base}?access_token=${tk}`,{
-            method:'PUT',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({message:'sync vocab',content,branch:'master',sha:S.giteeSha})
-          });
-          if(res2.ok){const j2=await res2.json();S.giteeSha=j2.content?.sha||S.giteeSha;}
-          else throw new Error('PUT retry failed: HTTP '+res2.status);
-        }else throw new Error('无法获取 SHA 进行重试');
-      }else{
-        throw new Error(`HTTP ${res.status} ${detail.slice(0,120)}`);
-      }
-    }else{
-      const json=await res.json();
-      S.giteeSha=json.content?.sha||S.giteeSha;
-    }
-    const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    setGiteeStatus(`上次同步 ${t}`,'ok');
-  }catch(err){
-    setGiteeStatus('推送失败：'+err.message,'err');
-    console.error('giteePush',err);
+// 切到后台立即推送（浏览器不保证完成，未完成的保留待推送标记）；回到前台拉取
+function onVisibilityChange(){
+  if(!syncReady()||loadVocab()===null)return;
+  if(document.visibilityState==='hidden'){
+    if(dirtyKinds().length){clearTimeout(_pushTimer);syncAll(dirtyKinds(),false);}
+  }else if(Date.now()-_lastSync>30000){
+    syncAll(null,false);
   }
 }
 

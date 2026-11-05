@@ -25,6 +25,7 @@
   - 删除功能：两个入口——①多选后批量工具栏「删除」按钮（二次确认）；②单词详情弹窗内「删除此单词」
   - 导入/导出：JSON 格式，含全部字段（含扩展字段）
   - PWA：manifest 通过 Blob URL 注入，Service Worker 通过 Blob URL 注册并缓存
+  - 多用户同步（v2.6.0）：共享默写词表（仅管理员编辑）+ 每人独立的生词本和默写进度，删除记录、按时间戳合并、SHA 冲突重试，见「重要约定」。已用模拟 Gitee 的多设备 Playwright 测试验证（40 项），真实 Gitee 多设备实测待确认
 - **默写库**（教材周默写 + 模拟测试，v1.8.0 新增）：与生词本完全独立的第二套词库
   - 数据独立存储于 `wr_dict`（`S.dict`），词条结构 `{id,word,week,meaning,addedAt}`，不接入生词本统计/Gitee同步
   - 添加方式：「添加」屏顶部新增「普通生词 / 默写标记」模式切换（`S.addMode`），切到默写模式后，PDF 双击单词 / 选中文字（含连字符如 absent-minded）会弹窗要求填周数+释义后加入默写库；选中内容含空格（短语/句子）会被拒绝
@@ -137,7 +138,7 @@
 
 ## 版本管理
 
-- **当前版本**：v2.5.2
+- **当前版本**：v2.6.0
 - **版本规则**：每次修改代码后必须同步更新版本号，共三处：
   1. 首页 `<p class="home-ver">v x.x.x</p>`
   2. 设置页「关于」卡片内的版本 badge
@@ -152,7 +153,16 @@
 - **熟练度枚举**：`完全不会` / `掌握中` / `已掌握`，对应 CSS 类 `b0` / `b1` / `b2`
 - **单词 ID**：由 `uid()` 生成（`Date.now().toString(36) + random`），纯字母数字，可安全用于 HTML `onclick` 属性
 - **HTML 注入防护**：动态内容统一通过 `esc()` 函数转义；onclick 中只传数字索引或已知安全字符串
-- **词库存储键**：`wr_vocab`（生词本）、`wr_apikey`（API Key）
+- **词库存储键**：`wr_vocab`（生词本）、`wr_vocab_del`（生词删除记录）、`wr_dict`（默写词表）、`wr_dict_del`（默写词删除记录）、`wr_progress`（个人默写进度）、`wr_user`（`{name,admin,migrated}`）、`wr_dirty`（待推送文件）、`wr_apikey`（API Key）；`wr_dictWeekWrong` 是 v2.6.0 前的错题池，只在迁移时读取
+- **多用户同步（v2.6.0）**：每台设备对应一个用户（设置里填用户名 + 是否词表管理员）。Gitee 仓库结构：
+  - `dict.json` `{items,deleted}`：共享默写词表，**只有管理员设备写**，普通用户只读、以远端为准
+  - `users/<name>/vocab.json` `{items,deleted}`：个人生词本
+  - `users/<name>/progress.json` `{mastered:{id:{v,at}},wrong:{id:{v,at}}}`：个人默写进度（掌握标记、错题），**不再写在词条上**
+  - `vocab.json`：v2.6.0 前的单文件格式，只读不写，作为迁移来源和备份
+- **合并规则**：列表按键（生词 `word` 小写 / 默写词 `id`）取 `lastModified` 较新者；删除必须写删除记录（`tombstoneVocab()` / `tombstoneDict()`），条目不比删除时间新的视为已删除；进度每个 id 取 `at` 较新者。改词条字段时必须更新 `lastModified`
+- **同步时机**：启动、回到前台（间隔 >30 秒）、保存后 3 秒、切到后台立即推送；写入失败（SHA 过期）自动重新读取合并后重试一次。入口 `syncAll(kinds, showToast)`
+- **词表编辑入口仅管理员可见**：加 `admin-only` 类（`body.nonadmin` 时隐藏），对应函数开头判断 `isAdmin()`；未填用户名的设备视为单人本地使用，保留全部权限
+- **旧数据迁移**：每台设备每个用户首次同步时弹窗确认旧数据是否归属当前用户（`ensureMigrated()` / `migrateChoice()`）；管理员首次同步且 `dict.json` 不存在时，用本机词表 + 旧 `vocab.json` 的词表发布，id 原样保留
 - **生成模式**：`S.genMode` 状态，`'manual'`（默认）或 `'api'`；`setGenMode()` 切换时同步 UI 显隐
 - **手动模式 JSON 兼容**：`importManualJSON()` 同时接受 `chinese/english/example` 和 `chineseDefinition/englishDefinition/examples` 两套字段名
 - **拼写题**：`checkSpell()` 大小写不敏感比对，Enter 键可提交；`.spell-inp.ok/.no` 控制输入框颜色反馈
