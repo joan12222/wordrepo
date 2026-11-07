@@ -389,7 +389,7 @@ body{
     <button class="btn btn-o" onclick="newVocab()">✨ 新建空白生词本</button>
     <button class="btn btn-o" onclick="openHomePull()">☁️ 从远端拉取</button>
   </div>
-  <p class="home-ver">v 2.6.0</p>
+  <p class="home-ver">v 2.7.0</p>
 </div>
 
 <!-- MAIN APP -->
@@ -606,7 +606,7 @@ body{
           <div style="font-size:32px;margin-bottom:8px">📚</div>
           <div style="font-weight:700;font-size:16px;color:var(--cp);margin-bottom:4px">词记</div>
           <div style="font-size:12px;color:var(--cm)">智能单词记忆工具</div>
-          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.6.0</div>
+          <div style="font-size:12px;font-weight:600;color:var(--cp);margin-top:10px;padding:4px 14px;background:var(--cpbg);border-radius:20px;display:inline-block">v 2.7.0</div>
         </div>
       </div>
     </div>
@@ -673,7 +673,7 @@ body{
 
   if('serviceWorker' in navigator){
     const sw=`
-const CACHE='wr-2.6.0';
+const CACHE='wr-2.7.0';
 const PRE=['/index.html','/pdf.min.js','/pdf.worker.min.js'];
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting())
@@ -2104,7 +2104,11 @@ function checkAns(si){
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.opts[q.ci])}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
   document.getElementById('nxt-btn').classList.remove('hidden');
+  focusNextBtn('#nxt-btn');
 }
+
+// 答题后把焦点移到「下一题/继续」按钮，Enter 即可进入下一题；延迟是为了不让提交时那次 Enter 直接触发按钮
+function focusNextBtn(sel){setTimeout(()=>document.querySelector(sel)?.focus(),60);}
 
 function checkSpell(){
   const ses=S.rvSess;if(ses.answered)return;
@@ -2127,6 +2131,7 @@ function checkSpell(){
     fb.innerHTML=`✗ 错误！正确答案：<strong>${esc(q.answer)}</strong><br><small>${esc(q.expl).replace(/\n/g,'<br>')}</small>`;
   }
   document.getElementById('nxt-btn').classList.remove('hidden');
+  focusNextBtn('#nxt-btn');
 }
 
 function nextQ(){S.rvSess.idx++;renderQ();}
@@ -2286,8 +2291,46 @@ function showDictDetail(id){
     </div>
     <div class="divider"></div>
     <div class="dfield"><div class="dlbl">释义</div><div class="dval">${esc(w.meaning)}</div></div>
+    <button class="btn btn-o btn-full mt12 admin-only" onclick="editDictWord('${id}')">✏️ 修改单词/释义</button>
     ${w.week===0?`<button class="btn btn-o btn-full mt12" data-dict-master-id="${w.id}" aria-pressed="${!!isMastered(w.id)}" onclick="toggleDictMastered('${w.id}')">${isMastered(w.id)?'✓ 已掌握 · 点击取消':'标记为已掌握'}</button>`:''}
     <button class="btn btn-d btn-full mt12 admin-only" onclick="delDictWord('${id}');closeModal()">🗑️ 删除此单词</button>`);
+}
+
+// 改拼写/释义时保留原 id，个人默写进度（按 id 记）不丢
+function editDictWord(id){
+  if(!isAdmin())return;
+  const w=S.dict.find(x=>x.id===id);if(!w)return;
+  openModal(`
+    <div class="mtitle">✏️ 修改单词/释义</div>
+    <div class="mb12">
+      <div class="dlbl">单词</div>
+      <input class="inp" id="dictw-editword-inp" value="${esc(w.word)}">
+    </div>
+    <div class="mb12">
+      <div class="dlbl">释义</div>
+      <input class="inp" id="dictw-editmeaning-inp" value="${esc(w.meaning)}">
+    </div>
+    <div class="row g8">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" style="flex:1" onclick="confirmEditDictWord('${id}')">确认修改</button>
+    </div>`);
+  setTimeout(()=>document.getElementById('dictw-editword-inp')?.focus(),50);
+}
+
+function confirmEditDictWord(id){
+  const w=S.dict.find(x=>x.id===id);if(!w)return;
+  const word=document.getElementById('dictw-editword-inp').value.trim();
+  const meaning=document.getElementById('dictw-editmeaning-inp').value.trim();
+  if(!word||/\s/.test(word)){toast('单词不能为空或含空格','err');return;}
+  if(!meaning){toast('请填写释义','err');return;}
+  if(word!==w.word||meaning!==w.meaning){
+    w.word=word;w.meaning=meaning;
+    w.lastModified=new Date().toISOString();
+    saveDict();
+  }
+  closeModal();
+  renderDictScreen();
+  toast(`已修改「${word}」`,'ok');
 }
 
 function editDictWeek(id){
@@ -2475,6 +2518,7 @@ function submitDictAns(){
   fb.innerHTML=ok?'✓ 正确！':`✗ 错误！正确拼写：<strong>${esc(q.answer)}</strong>`;
   if(q.word.week===0)document.getElementById('dictmaster-btn').classList.remove('hidden');
   document.getElementById('dnxt-btn').classList.remove('hidden');
+  focusNextBtn('#dnxt-btn');
 }
 
 function dictNextQ(){S.dictSess.idx++;renderDictQ();}
@@ -2939,6 +2983,7 @@ function checkFlatMC(idx){
   if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
     fb.textContent=ok?'✓ 正确！':'✗ 错误，正确答案：'+q.correct;}
   document.getElementById('tq-next')?.classList.remove('hidden');
+  focusNextBtn('#tq-next button');
   ts.quizQueue.shift();
   if(ok){ts.correctCount++;}
   else{q.opts=[...q.opts].sort(()=>Math.random()-.5);ts.quizQueue.push(q);}
@@ -2953,6 +2998,7 @@ function checkFlatSpell(){
   if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
     fb.textContent=ok?'✓ 正确！':'✗ 错误，正确拼写：'+q.correct;}
   document.getElementById('tq-next')?.classList.remove('hidden');
+  focusNextBtn('#tq-next button');
   ts.quizQueue.shift();
   if(ok){ts.correctCount++;}
   else{ts.quizQueue.push(q);}
@@ -3128,6 +3174,7 @@ function checkPwdMC(idx){
   if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
     fb.textContent=ok?'✓ 正确！':'✗ 错误，正确答案：'+q.correct;}
   document.getElementById('pwd-next')?.classList.remove('hidden');
+  focusNextBtn('#pwd-next button');
   ts.quizQueue.shift();
   if(ok){ts.correctCount++;}
   else{
@@ -3147,6 +3194,7 @@ function checkPwdSpell(){
   if(fb){fb.className='fb '+(ok?'ok':'no');fb.style.display='block';
     fb.textContent=ok?'✓ 正确！':'✗ 正确拼写：'+q.correct;}
   document.getElementById('pwd-next')?.classList.remove('hidden');
+  focusNextBtn('#pwd-next button');
   ts.quizQueue.shift();
   if(ok){ts.correctCount++;}
   else{ts.quizQueue.push(q);}

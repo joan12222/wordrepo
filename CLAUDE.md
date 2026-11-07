@@ -102,6 +102,20 @@
   - 用户如果已经导入过项目根目录的旧 `候选_p94-103.json` … `候选_p184-193.json`，导入同页码的 v2 文件前要先撤销旧的那批，否则会重复
 - 候选 JSON 格式为 `[{"word","meaning","page"}]`（page 是 PDF 页序），用户在词记「默写」页点「导入候选」逐个文件导入，导入时指定周数
 
+## 黄色标记易错词提取（不在 index.html 内）
+
+- **数据源**：用户在书上用黄色高亮标出的易错义项，PDF 为 `D:\projects\fileprocess\英语\名校名师高考英语词汇全攻略（新）.pdf`（用户会持续往里加高亮，页序与 OCR 用的同一本书一致）。用户给出页码范围即开始处理
+- **输出**：`易错词/黄色标记_pA-B_含词性.json`，格式同候选 JSON `[{"word","meaning","page"}]`，每行一条，可直接用「导入候选」导入
+- **做法**：pymupdf 渲染页面 → HSV 检测黄色区域（110dpi，H 18–38、S>70、V>150，闭运算后面积>150）→ 按高亮所在行裁 200dpi 条带图逐页看图核对。检测到的高亮处数要和最终条目对账。面积过滤可能漏掉只涂了半个字的高亮，汇报时提醒用户
+- **收录口径**（用户 2026-11-07 定）：
+  - 只收高亮的义项，不收该词其他义项；高亮没涂到词性也要补上所属词性和 [C]/[U] 等标记
+  - 高亮在派生词释义上（如 `jointly ad.共同地`），收派生词本身，不收主词条
+  - 词头带可省字母括号的去括号，同 v2 口径（`jewel(le)ry` → jewelry，`judg(e)ment` → judgment，`labo(u)rer` → laborer）；`*` 不进答案
+  - **不同意思分开**：同一个词的不同高亮各成一条；一处高亮跨了多个词性的，按词性拆成多条（如 kid → `v.欺骗；戏弄`、`n.[C]欺骗，哄骗` 两条）；同一词性内用「；」并列的几个意思不拆（如 `a.渴望的；敏锐的；精明的` 为一条）；同一义项因换行被分成两段高亮的算一条
+  - 标了 `(pl.)` 的义项，word 录复数形式（如 local 的 `n.(pl.)当地居民` → locals，jaw → jaws，同 irons、compasses），让默写答案和提示对得上（用户 2026-11-07 定）
+  - 词性写法按原书（原书写 `adj.` 就保留 `adj.`）；标点沿用已有文件：中文分号/逗号/括号用全角，`[C]`、`[U]`、`(pl.)` 用半角
+- **进度**：已完成 p4–83、p84–123、p124–136、p137–143、p144–148、p149–163（p149–163 共 57 条，按上述口径输出；p163 之前各文件早于本口径，未回溯检查）
+
 ## 进行中
 
 无
@@ -132,13 +146,13 @@
   - 四选一判题：`checkAns()`
   - 拼写题判题：`checkSpell()`
   - 数据导入/导出：`importJSON()`，`exportJSON()`
-  - 默写库管理：`renderDictScreen()`，`addDictWord()`/`confirmAddDictWord()`
+  - 默写库管理：`renderDictScreen()`，`addDictWord()`/`confirmAddDictWord()`，改单词/释义 `editDictWord()`/`confirmEditDictWord()`（保留 id）
   - 默写复习：`startDictReview()`/`startDictSession(words)`，`buildDictQs()`，`renderDictQ()`，`submitDictAns()`，`renderDictResult()`（含重练错题）
   - 默写候选导入：`onDictImportFile()`，`renderDictImportScreen()`，`confirmDictImport()`，`undoDictImportBatch()`
 
 ## 版本管理
 
-- **当前版本**：v2.6.0
+- **当前版本**：v2.7.0
 - **版本规则**：每次修改代码后必须同步更新版本号，共三处：
   1. 首页 `<p class="home-ver">v x.x.x</p>`
   2. 设置页「关于」卡片内的版本 badge
